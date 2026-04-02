@@ -12,8 +12,8 @@
   --color-aquire-grey-med: #64748B;
   --color-aquire-grey-dark: #334155;
   --color-aquire-border: #E2E8F0;
-  --color-aquire-text-heading: #0F172A;
-  --color-aquire-text-body: #475569;
+  --color-aquire-text-heading: #334155;
+  --color-aquire-text-body: #64748B;
 }
 
 @layer base {

@@ -40,66 +40,188 @@ interface DashboardContentProps {
 }
 
 const INITIAL_MODULES: Module[] = [
-  { id: "1", name: "Introduction to Advanced Algebra", description: "Master the fundamentals of algebraic structures and equations.", createdAt: new Date().toISOString() },
-  { id: "2", name: "Quantum Physics Fundamentals", description: "Explore the mysterious world of subatomic particles and wave functions.", createdAt: new Date().toISOString() },
-  { id: "3", name: "Modern World History", description: "A comprehensive journey through major global events of the 20th century.", createdAt: new Date().toISOString() },
-  { id: "4", name: "Organic Chemistry Basics", description: "Understanding carbon-based compounds and their reactions.", createdAt: new Date().toISOString() },
-  { id: "5", name: "Python Programming for Beginners", description: "Start your coding journey with the most popular language in the world.", createdAt: new Date().toISOString() },
+  { id: "m1", name: "Narrative Writing", description: "Master the art of storytelling, from character creation to plot development.", createdAt: new Date().toISOString() },
+  { id: "m2", name: "Punctuation", description: "Learn the essential rules of punctuation to make your writing clear and effective.", createdAt: new Date().toISOString() },
+  { id: "m3", name: "Editing", description: "Develop the skills to review, revise, and refine your own writing and others'.", createdAt: new Date().toISOString() },
+  { id: "m4", name: "Persuasive Writing", description: "Learn how to build strong arguments and convince your audience through writing.", createdAt: new Date().toISOString() },
 ];
 
-const INITIAL_LESSONS: Lesson[] = [
-  {
-    id: "l1",
-    moduleId: "1",
-    name: "Linear Equations & Inequalities",
-    description: "Solving systems of linear equations and graphing inequalities.",
-    thumbnail: "https://picsum.photos/seed/math1/400/300",
-    createdAt: new Date().toISOString(),
-    chapters: [
-      { 
-        id: "c1", 
-        name: "Introduction to Variables", 
-        content: "Variables are symbols used to represent numbers...",
-        blocks: [
-          { id: "b1", type: "reading", data: { text: "Variables are the building blocks of algebra. They allow us to write general formulas that work for any number.", examples: "x, y, z, alpha, beta" } },
-          { id: "b2", type: "true_false", data: { statement: "A variable can only represent a single fixed number.", isTrue: false } },
-          { id: "b4", type: "mcq", data: { question: "Which of the following is a common variable name?", options: [{ text: "x", isCorrect: true }, { text: "5", isCorrect: false }, { text: "+", isCorrect: false }] } }
-        ]
-      },
-      { 
-        id: "c2", 
-        name: "Graphing Lines", 
-        content: "The slope-intercept form is y = mx + b...",
-        blocks: [
-          { id: "b3", type: "video", data: { url: "https://youtube.com/watch?v=y=mx+b", description: "Visual guide to slope-intercept form." } },
-          { id: "b5", type: "fill_blanks", data: { text: "In the equation y = mx + b, m represents the [blank] and b represents the [blank].", answers: ["slope", "y-intercept"] } }
-        ]
-      }
-    ]
-  },
-  {
-    id: "l2",
-    moduleId: "1",
-    name: "Quadratic Functions",
-    description: "Deep dive into parabolas, vertex form, and the quadratic formula.",
-    thumbnail: "https://picsum.photos/seed/math2/400/300",
-    createdAt: new Date().toISOString(),
-    chapters: [
-      { id: "c3", name: "The Quadratic Formula", content: "x = (-b ± √(b² - 4ac)) / 2a", blocks: [] }
-    ]
-  },
-  {
-    id: "l3",
-    moduleId: "5",
-    name: "Python Data Structures",
-    description: "Lists, Tuples, Dictionaries, and Sets in Python.",
-    thumbnail: "https://picsum.photos/seed/py1/400/300",
-    createdAt: new Date().toISOString(),
-    chapters: [
-      { id: "c4", name: "Working with Lists", content: "Lists are ordered collections of items...", blocks: [] }
-    ]
-  }
-];
+const generateLessons = (): Lesson[] => {
+  const lessons: Lesson[] = [];
+  const moduleData = [
+    { 
+      id: "m1", 
+      name: "Narrative Writing",
+      lessonNames: [
+        "Introduction to Story Writing", "Characters and Setting", "Plot Development", 
+        "Beginning, Middle, End", "Creative Story Writing", "Writing Short Stories", 
+        "Adding Emotions", "Dialogue Writing"
+      ]
+    },
+    { 
+      id: "m2", 
+      name: "Punctuation",
+      lessonNames: [
+        "Introduction to Punctuation", "Full Stops & Commas", "Question & Exclamation Marks", 
+        "Apostrophes", "Capitalization Rules", "Quotation Marks", 
+        "Common Mistakes", "Practice Exercises"
+      ]
+    },
+    { 
+      id: "m3", 
+      name: "Editing",
+      lessonNames: [
+        "Introduction to Editing", "Spelling Mastery", "Grammar Essentials", 
+        "Sentence Structure", "Paragraph Flow", "Proofreading Techniques", 
+        "Style and Tone", "Final Review"
+      ]
+    },
+    { 
+      id: "m4", 
+      name: "Persuasive Writing",
+      lessonNames: [
+        "Introduction to Persuasive Writing", "Forming Opinions", "Building Arguments", 
+        "Persuasive Vocabulary", "Structuring Your Essay", "Debate and Counter-arguments", 
+        "Emotional Appeals", "Final Persuasive Piece"
+      ]
+    }
+  ];
+
+  const getChapterData = (type: string, modName: string, lessonName: string, chapterIdx: number) => {
+    switch (type) {
+      case 'reading':
+        return {
+          name: `📖 Understanding ${lessonName}`,
+          blocks: [{
+            id: `b-reading-${Math.random()}`,
+            type: 'reading' as const,
+            data: {
+              text: `<h3>Overview of ${lessonName}</h3><p>${lessonName} is a critical component of ${modName}. It involves understanding the core principles and applying them effectively in your writing.</p><p><b>Key Concepts:</b></p><ul><li>Clarity and Precision</li><li>Engagement with the Reader</li><li>Structural Integrity</li></ul>`,
+              examples: `Example 1: A well-crafted sentence in ${lessonName}.\nExample 2: How to avoid common pitfalls in ${lessonName}.\nExample 3: Advanced techniques for ${lessonName} mastery.`
+            }
+          }]
+        };
+      case 'video':
+        return {
+          name: `🎥 ${lessonName} Visual Guide`,
+          blocks: [{
+            id: `b-video-${Math.random()}`,
+            type: 'video' as const,
+            data: {
+              url: "https://www.w3schools.com/html/mov_bbb.mp4",
+              description: `Watch this comprehensive video guide to master the concepts of ${lessonName} in ${modName}.`
+            }
+          }]
+        };
+      case 'short_answer':
+        return {
+          name: `✍️ ${lessonName} Practice`,
+          blocks: [{
+            id: `b-sa-${Math.random()}`,
+            type: 'short_answer' as const,
+            data: {
+              questions: [
+                { q: `What is the primary goal of ${lessonName}?`, a: `To improve the quality and impact of writing within the context of ${modName}.` },
+                { q: `Name one key element of ${lessonName}.`, a: `Consistency and attention to detail.` },
+                { q: `How does ${lessonName} benefit the reader?`, a: `It makes the content more accessible and engaging.` }
+              ]
+            }
+          }]
+        };
+      case 'mcq':
+        return {
+          name: `✅ ${lessonName} Quiz`,
+          blocks: [{
+            id: `b-mcq-${Math.random()}`,
+            type: 'mcq' as const,
+            data: {
+              question: `Which of the following is MOST important for ${lessonName}?`,
+              options: [
+                { text: "Speed of writing", isCorrect: false },
+                { text: "Clarity of thought", isCorrect: true },
+                { text: "Length of the document", isCorrect: false },
+                { text: "Use of complex words", isCorrect: false },
+                { text: "Following the rules of grammar", isCorrect: true }
+              ]
+            }
+          }]
+        };
+      case 'fill_blanks':
+        return {
+          name: `🧩 ${lessonName} Completion`,
+          blocks: [{
+            id: `b-fb-${Math.random()}`,
+            type: 'fill_blanks' as const,
+            data: {
+              text: `${lessonName} requires a [blank] approach to ensure [blank] and [blank] in every sentence.`,
+              answers: ["systematic", "accuracy", "flow"],
+              options: [
+                ["random", "systematic", "haphazard"],
+                ["accuracy", "speed", "length"],
+                ["flow", "complexity", "volume"]
+              ]
+            }
+          }]
+        };
+      case 'true_false':
+        return {
+          name: `✔️ ${lessonName} Fact Check`,
+          blocks: [{
+            id: `b-tf-${Math.random()}`,
+            type: 'true_false' as const,
+            data: {
+              statement: `${lessonName} is only necessary for professional writers and doesn't apply to students.`,
+              isTrue: false
+            }
+          }]
+        };
+      case 'drag_drop':
+        return {
+          name: `🔀 ${lessonName} Organization`,
+          blocks: [{
+            id: `b-dd-${Math.random()}`,
+            type: 'drag_drop' as const,
+            data: {
+              paragraph: `Arrange the steps of ${lessonName} in the correct order: [blank], [blank], [blank].`,
+              items: ["Planning", "Drafting", "Reviewing"],
+              answers: ["Planning", "Drafting", "Reviewing"]
+            }
+          }]
+        };
+      default:
+        return { name: "Chapter", blocks: [] };
+    }
+  };
+
+  const chapterTypes = ['reading', 'video', 'short_answer', 'mcq', 'fill_blanks', 'true_false', 'drag_drop'];
+
+  moduleData.forEach((mod) => {
+    mod.lessonNames.forEach((lessonName, lessonIdx) => {
+      const lessonId = `l-${mod.id}-${lessonIdx + 1}`;
+      const chapters: Chapter[] = [];
+      
+      chapterTypes.forEach((type, cIdx) => {
+        const chapterId = `c-${lessonId}-${cIdx + 1}`;
+        const { name, blocks } = getChapterData(type, mod.name, lessonName, cIdx);
+        chapters.push({ id: chapterId, name, content: "", blocks });
+      });
+
+      lessons.push({
+        id: lessonId,
+        moduleId: mod.id,
+        name: lessonName,
+        description: `Comprehensive guide to ${lessonName} for grades 3-7.`,
+        thumbnail: `https://picsum.photos/seed/${lessonId}/400/300`,
+        createdAt: new Date().toISOString(),
+        chapters
+      });
+    });
+  });
+
+  return lessons;
+};
+
+const INITIAL_LESSONS: Lesson[] = generateLessons();
 
 export default function DashboardContent({ activeTab, showToast }: DashboardContentProps) {
   // Modules State
@@ -114,7 +236,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [editingChapterInEditor, setEditingChapterInEditor] = useState<Chapter | null>(null);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   // Modal States
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
@@ -136,19 +258,29 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   // Load data from localStorage
   useEffect(() => {
     const savedModules = localStorage.getItem("aquire_modules");
-    if (savedModules) {
-      setModules(JSON.parse(savedModules));
-    } else {
-      setModules(INITIAL_MODULES);
-      localStorage.setItem("aquire_modules", JSON.stringify(INITIAL_MODULES));
+    const savedLessons = localStorage.getItem("aquire_lessons");
+    
+    // Check if we need to force update to the new writing curriculum
+    let needsUpdate = true;
+    try {
+      if (savedModules) {
+        const parsed = JSON.parse(savedModules);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed.some(m => m.name === "Narrative Writing")) {
+          needsUpdate = false;
+        }
+      }
+    } catch (e) {
+      needsUpdate = true;
     }
 
-    const savedLessons = localStorage.getItem("aquire_lessons");
-    if (savedLessons) {
-      setLessons(JSON.parse(savedLessons));
-    } else {
+    if (needsUpdate) {
+      setModules(INITIAL_MODULES);
       setLessons(INITIAL_LESSONS);
+      localStorage.setItem("aquire_modules", JSON.stringify(INITIAL_MODULES));
       localStorage.setItem("aquire_lessons", JSON.stringify(INITIAL_LESSONS));
+    } else {
+      setModules(JSON.parse(savedModules!));
+      setLessons(JSON.parse(savedLessons!));
     }
   }, []);
 
@@ -581,9 +713,9 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
           <ChapterEditor 
             chapter={editingChapterInEditor}
             onBack={() => setEditingChapterInEditor(null)}
-            onSave={(updatedChapter) => {
+            onUpdate={(updatedChapter) => {
               if (!selectedLessonId) return;
-              setLessons(lessons.map(l => {
+              setLessons(prev => prev.map(l => {
                 if (l.id === selectedLessonId) {
                   return {
                     ...l,
@@ -592,6 +724,19 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
                 }
                 return l;
               }));
+            }}
+            onSave={(updatedChapter) => {
+              if (!selectedLessonId) return;
+              setLessons(prev => prev.map(l => {
+                if (l.id === selectedLessonId) {
+                  return {
+                    ...l,
+                    chapters: (l.chapters || []).map(c => c.id === updatedChapter.id ? updatedChapter : c)
+                  };
+                }
+                return l;
+              }));
+              showToast("Chapter saved successfully", "success");
               setEditingChapterInEditor(null);
             }}
             showToast={showToast}

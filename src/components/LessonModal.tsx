@@ -1,31 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Save, AlertCircle, Loader2, Upload, Image as ImageIcon, ChevronDown } from "lucide-react";
-import { Module } from "./ModuleModal";
 import RichTextEditor from "./RichTextEditor";
-
-export interface ContentBlock {
-  id: string;
-  type: 'reading' | 'video' | 'short_answer' | 'mcq' | 'fill_blanks' | 'true_false' | 'drag_drop';
-  data: any;
-}
-
-export interface Chapter {
-  id: string;
-  name: string;
-  content: string;
-  blocks: ContentBlock[];
-}
-
-export interface Lesson {
-  id: string;
-  moduleId: string;
-  name: string;
-  description: string;
-  thumbnail: string;
-  chapters: Chapter[];
-  createdAt: string;
-}
+import { Module, Lesson } from "../types";
 
 interface LessonModalProps {
   isOpen: boolean;
@@ -47,6 +24,7 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [moduleId, setModuleId] = useState("");
+  const [grade, setGrade] = useState("Grade 2");
   const [thumbnail, setThumbnail] = useState(SAMPLE_THUMBNAILS[0]);
   const [errors, setErrors] = useState<{ name?: string; description?: string; moduleId?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,11 +35,13 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
       setName(editingLesson.name);
       setDescription(editingLesson.description);
       setModuleId(editingLesson.moduleId);
+      setGrade(editingLesson.grade || "Grade 2");
       setThumbnail(editingLesson.thumbnail);
     } else {
       setName("");
       setDescription("");
       setModuleId(modules[0]?.id || "");
+      setGrade("Grade 2");
       setThumbnail(SAMPLE_THUMBNAILS[0]);
     }
     setErrors({});
@@ -95,7 +75,7 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    onSave({ name, description, moduleId, thumbnail });
+    onSave({ name, description, moduleId, thumbnail, grade });
     setIsSubmitting(false);
     onClose();
   };
@@ -160,6 +140,24 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
                         <AlertCircle size={12} /> {errors.moduleId}
                       </p>
                     )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-aquire-grey-dark ml-1">
+                      Grade Level
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={grade}
+                        onChange={(e) => setGrade(e.target.value)}
+                        className="w-full px-6 py-4 rounded-2xl input-field appearance-none cursor-pointer"
+                      >
+                        {["Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7"].map(g => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-4 h-4 pointer-events-none" />
+                    </div>
                   </div>
 
                   <div className="space-y-2">

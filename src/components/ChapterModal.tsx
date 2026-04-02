@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Save, AlertCircle, Loader2, FileText } from "lucide-react";
-import { Chapter } from "./LessonModal";
+import { Chapter } from "../types";
 import RichTextEditor from "./RichTextEditor";
 
 interface ChapterModalProps {

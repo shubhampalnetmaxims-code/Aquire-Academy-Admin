@@ -29,6 +29,7 @@ import RichTextEditor from "./RichTextEditor";
 interface ChapterEditorProps {
   chapter: Chapter;
   onSave: (updatedChapter: Chapter) => void;
+  onUpdate?: (updatedChapter: Chapter) => void;
   onBack: () => void;
   showToast: (message: string, type: "success" | "error") => void;
 }
@@ -43,14 +44,28 @@ const BLOCK_TYPES = [
   { type: 'drag_drop', label: 'Drag & Drop', icon: Move, color: 'text-cyan-500' },
 ];
 
-export default function ChapterEditor({ chapter, onSave, onBack, showToast }: ChapterEditorProps) {
+export default function ChapterEditor({ chapter, onSave, onUpdate, onBack, showToast }: ChapterEditorProps) {
   const [localChapter, setLocalChapter] = useState<Chapter>({
     ...chapter,
     blocks: chapter.blocks || []
   });
   const [expandedBlocks, setExpandedBlocks] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState<string | null>(null);
+  const [lastSaved, setLastSaved] = useState<string>(new Date().toLocaleTimeString());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-save logic
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (JSON.stringify(localChapter) !== JSON.stringify(chapter)) {
+        if (onUpdate) {
+          onUpdate(localChapter);
+          setLastSaved(new Date().toLocaleTimeString());
+        }
+      }
+    }, 3000); // Auto-save every 3 seconds if changes occur
+    return () => clearTimeout(timer);
+  }, [localChapter, chapter, onUpdate]);
 
   const addBlock = (type: ContentBlock['type']) => {
     const newBlock: ContentBlock = {
@@ -143,18 +158,15 @@ export default function ChapterEditor({ chapter, onSave, onBack, showToast }: Ch
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-aquire-grey-med uppercase tracking-widest">Examples (Comma separated)</label>
-              <input 
-                type="text"
+              <label className="text-xs font-bold text-aquire-grey-med uppercase tracking-widest">Examples (Rich Editor)</label>
+              <RichTextEditor 
                 value={data.examples}
-                onChange={(e) => updateBlockData(block.id, { ...data, examples: e.target.value })}
-                className="w-full input-field p-4"
-                placeholder="e.g. Example 1, Example 2"
+                onChange={(val) => updateBlockData(block.id, { ...data, examples: val })}
+                placeholder="Enter examples here..."
               />
             </div>
           </div>
         );
-
       case 'video':
         return (
           <div className="space-y-4">
@@ -200,11 +212,10 @@ export default function ChapterEditor({ chapter, onSave, onBack, showToast }: Ch
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-aquire-grey-med uppercase tracking-widest">Description</label>
-              <textarea 
+              <label className="text-xs font-bold text-aquire-grey-med uppercase tracking-widest">Description (Rich Editor)</label>
+              <RichTextEditor 
                 value={data.description}
-                onChange={(e) => updateBlockData(block.id, { ...data, description: e.target.value })}
-                className="w-full input-field p-4 resize-none"
+                onChange={(val) => updateBlockData(block.id, { ...data, description: val })}
                 placeholder="What is this video about?"
               />
             </div>
@@ -472,13 +483,17 @@ export default function ChapterEditor({ chapter, onSave, onBack, showToast }: Ch
             />
           </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-6">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-bold text-aquire-grey-med uppercase tracking-widest">Auto-save active</span>
+            <span className="text-[10px] text-aquire-primary font-medium">Last saved: {lastSaved}</span>
+          </div>
           <button 
             onClick={handleSave}
             className="btn-primary px-8"
           >
             <Save size={20} />
-            Save Chapter
+            Save & Exit
           </button>
         </div>
       </div>

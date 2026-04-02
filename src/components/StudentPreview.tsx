@@ -8,7 +8,9 @@ import {
   CheckCircle2, 
   XCircle,
   LayoutGrid,
-  ArrowLeft
+  ArrowLeft,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Chapter, ContentBlock, Lesson } from './LessonModal';
 
@@ -22,6 +24,7 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
   const [currentChapterIndex, setCurrentChapterIndex] = useState(initialChapterIndex);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [feedback, setFeedback] = useState<Record<string, { correct: boolean, message: string }>>({});
+  const [showAnswers, setShowAnswers] = useState(false);
 
   const chapters = lesson?.chapters || [];
   const currentChapter = chapters[currentChapterIndex];
@@ -39,9 +42,9 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
 
     switch (block.type) {
       case 'mcq':
-        const correctOption = block.data.options.find((o: any) => o.isCorrect);
-        isCorrect = userAnswer === correctOption?.text;
-        message = isCorrect ? "Correct! Well done." : `Incorrect. The correct answer is: ${correctOption?.text}`;
+        const correctOptions = block.data.options.filter((o: any) => o.isCorrect).map((o: any) => o.text);
+        isCorrect = correctOptions.includes(userAnswer);
+        message = isCorrect ? "Correct! Well done." : `Incorrect. The correct answer is: ${correctOptions.join(' or ')}`;
         break;
       case 'true_false':
         isCorrect = userAnswer === block.data.isTrue;
@@ -60,6 +63,11 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
         );
         isCorrect = allCorrect;
         message = isCorrect ? "All blanks correct!" : "Some blanks are incorrect.";
+        break;
+      case 'drag_drop':
+        const userOrder = answers[block.id] || [];
+        isCorrect = JSON.stringify(userOrder) === JSON.stringify(block.data.answers);
+        message = isCorrect ? "Correct order!" : "Incorrect order.";
         break;
     }
 
@@ -84,14 +92,24 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 mr-4 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
+            <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Show Answers</span>
+            <button 
+              onClick={() => setShowAnswers(!showAnswers)}
+              className={`w-10 h-5 rounded-full transition-all relative ${showAnswers ? 'bg-aquire-primary' : 'bg-white/20'}`}
+            >
+              <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${showAnswers ? 'left-6' : 'left-1'}`} />
+            </button>
+            {showAnswers ? <Eye size={14} className="text-aquire-primary" /> : <EyeOff size={14} className="text-white/30" />}
+          </div>
           <span className="text-xs font-bold text-white/30 uppercase tracking-widest hidden sm:block">
             Chapter {currentChapterIndex + 1} of {chapters.length}
           </span>
           <button 
             onClick={onClose}
-            className="btn-primary py-2 px-4 text-sm"
+            className="btn-primary py-2 px-6 text-sm font-bold shadow-lg shadow-aquire-primary/20"
           >
-            Exit Preview
+            EXIT EDIT
           </button>
         </div>
       </div>
@@ -192,15 +210,19 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
                               answers[block.id] === opt.text
                                 ? 'border-aquire-primary bg-aquire-primary/5 text-aquire-primary'
                                 : 'border-aquire-border text-aquire-grey-med hover:bg-aquire-grey-light hover:text-aquire-black'
-                            } ${feedback[block.id] ? 'cursor-default' : ''}`}
+                            } ${feedback[block.id] ? 'cursor-default' : ''} ${
+                              showAnswers && opt.isCorrect ? 'border-green-500 bg-green-50 text-green-600 ring-2 ring-green-500/20' : ''
+                            } ${
+                              showAnswers && answers[block.id] === opt.text && !opt.isCorrect ? 'border-red-500 bg-red-50 text-red-600 ring-2 ring-red-500/20' : ''
+                            }`}
                           >
-                            {opt.text}
+                            <span className="font-medium">{opt.text}</span>
                             <div className={`w-6 h-6 rounded-full border transition-all flex items-center justify-center ${
-                              answers[block.id] === opt.text
-                                ? 'border-aquire-primary bg-aquire-primary text-white'
+                              (answers[block.id] === opt.text || (showAnswers && opt.isCorrect))
+                                ? (showAnswers && opt.isCorrect ? 'border-green-500 bg-green-500 text-white' : 'border-aquire-primary bg-aquire-primary text-white')
                                 : 'border-aquire-border group-hover:border-aquire-grey-med'
                             }`}>
-                              {answers[block.id] === opt.text && <CheckCircle2 size={14} />}
+                              {(answers[block.id] === opt.text || (showAnswers && opt.isCorrect)) && <CheckCircle2 size={14} />}
                             </div>
                           </button>
                         ))}
@@ -236,7 +258,11 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
                               answers[block.id] === val
                                 ? (val ? 'border-green-500 bg-green-50 text-green-600' : 'border-red-500 bg-red-50 text-red-600')
                                 : 'border-aquire-border text-aquire-grey-med hover:border-aquire-grey-dark'
-                            } ${feedback[block.id] ? 'cursor-default' : ''}`}
+                            } ${feedback[block.id] ? 'cursor-default' : ''} ${
+                              showAnswers && val === block.data.isTrue ? 'border-green-500 bg-green-50 text-green-600 ring-2 ring-green-500/20' : ''
+                            } ${
+                              showAnswers && answers[block.id] === val && val !== block.data.isTrue ? 'border-red-500 bg-red-50 text-red-600 ring-2 ring-red-500/20' : ''
+                            }`}
                           >
                             {val ? 'True' : 'False'}
                           </button>
@@ -276,8 +302,10 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
                               handleAnswerChange(block.id, next);
                             }}
                             disabled={!!feedback[block.id]}
-                            className="input-field"
-                            placeholder="Type your answer here..."
+                            className={`input-field ${
+                              showAnswers ? 'border-green-500 bg-green-50/30' : ''
+                            }`}
+                            placeholder={showAnswers ? `Correct Answer: ${q.a}` : "Type your answer here..."}
                           />
                         </div>
                       ))}
@@ -307,19 +335,42 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
                         {block.data.answers?.map((_: string, idx: number) => (
                           <div key={idx} className="flex items-center gap-4">
                             <span className="text-aquire-grey-med text-xs font-bold uppercase">Blank {idx + 1}</span>
-                            <input 
-                              type="text"
-                              value={answers[block.id]?.[idx] || ''}
-                              onChange={(e) => {
-                                const current = answers[block.id] || [];
-                                const next = [...current];
-                                next[idx] = e.target.value;
-                                handleAnswerChange(block.id, next);
-                              }}
-                              disabled={!!feedback[block.id]}
-                              className="input-field py-2"
-                              placeholder="Type answer here..."
-                            />
+                            {block.data.options?.[idx] ? (
+                              <select
+                                value={answers[block.id]?.[idx] || ''}
+                                onChange={(e) => {
+                                  const current = answers[block.id] || [];
+                                  const next = [...current];
+                                  next[idx] = e.target.value;
+                                  handleAnswerChange(block.id, next);
+                                }}
+                                disabled={!!feedback[block.id]}
+                                className={`input-field py-2 ${
+                                  showAnswers ? 'border-green-500 bg-green-50/30' : ''
+                                }`}
+                              >
+                                <option value="">Select answer...</option>
+                                {block.data.options[idx].map((opt: string) => (
+                                  <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input 
+                                type="text"
+                                value={answers[block.id]?.[idx] || ''}
+                                onChange={(e) => {
+                                  const current = answers[block.id] || [];
+                                  const next = [...current];
+                                  next[idx] = e.target.value;
+                                  handleAnswerChange(block.id, next);
+                                }}
+                                disabled={!!feedback[block.id]}
+                                className={`input-field py-2 ${
+                                  showAnswers ? 'border-green-500 bg-green-50/30' : ''
+                                }`}
+                                placeholder={showAnswers ? block.data.answers[idx] : "Type answer here..."}
+                              />
+                            )}
                           </div>
                         ))}
                       </div>
@@ -345,14 +396,74 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
                   {block.type === 'drag_drop' && (
                     <div className="card p-8 space-y-6">
                       <div className="text-xl font-bold text-aquire-black rich-editor-content" dangerouslySetInnerHTML={{ __html: block.data.paragraph }}></div>
-                      <div className="flex flex-wrap gap-3 pt-4">
-                        {block.data.items?.map((item: string, idx: number) => (
-                          <div key={idx} className="px-4 py-2 bg-aquire-grey-light border border-aquire-border rounded-xl text-aquire-grey-dark text-sm">
-                            {item}
-                          </div>
-                        ))}
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap gap-3 p-4 bg-aquire-grey-light rounded-2xl border border-dashed border-aquire-border min-h-[60px]">
+                          {(answers[block.id] || []).map((item: string, idx: number) => (
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                if (feedback[block.id]) return;
+                                const current = answers[block.id] || [];
+                                handleAnswerChange(block.id, current.filter((_, i) => i !== idx));
+                              }}
+                              className="px-4 py-2 bg-aquire-primary text-white rounded-xl text-sm font-bold shadow-md flex items-center gap-2"
+                            >
+                              {item}
+                              <X size={14} />
+                            </button>
+                          ))}
+                          {(!answers[block.id] || answers[block.id].length === 0) && (
+                            <span className="text-aquire-grey-med text-sm italic">Click items below to arrange them...</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-3 pt-4">
+                          {block.data.items?.filter((item: string) => !(answers[block.id] || []).includes(item)).map((item: string, idx: number) => (
+                            <button 
+                              key={idx} 
+                              onClick={() => {
+                                if (feedback[block.id]) return;
+                                const current = answers[block.id] || [];
+                                handleAnswerChange(block.id, [...current, item]);
+                              }}
+                              className={`px-4 py-2 border rounded-xl text-sm font-medium transition-all ${
+                                showAnswers 
+                                  ? 'bg-green-50 border-green-500 text-green-700' 
+                                  : 'bg-white border-aquire-border text-aquire-grey-dark hover:border-aquire-primary hover:text-aquire-primary'
+                              }`}
+                            >
+                              {item}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <p className="text-xs text-aquire-grey-med italic">Note: Drag & Drop interaction is simulated in this preview.</p>
+                      {!feedback[block.id] ? (
+                        <button 
+                          disabled={!answers[block.id] || answers[block.id].length !== block.data.items.length}
+                          onClick={() => checkAnswer(block)}
+                          className="btn-primary w-full py-4 disabled:opacity-50"
+                        >
+                          Check Answer
+                        </button>
+                      ) : (
+                        <div className={`p-4 rounded-2xl flex items-center gap-3 ${
+                          feedback[block.id].correct ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'
+                        }`}>
+                          {feedback[block.id].correct ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+                          <p className="font-bold text-sm">{feedback[block.id].message}</p>
+                        </div>
+                      )}
+                      {showAnswers && (
+                        <div className="p-4 bg-green-50 rounded-xl border border-green-100">
+                          <p className="text-xs font-bold text-green-600 uppercase tracking-widest mb-2">Correct Order:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {block.data.answers.map((ans: string, i: number) => (
+                              <span key={i} className="px-3 py-1 bg-white border border-green-200 rounded-lg text-xs font-bold text-green-700">
+                                {i + 1}. {ans}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </motion.div>
