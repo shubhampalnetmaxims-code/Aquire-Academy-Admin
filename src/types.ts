@@ -1,6 +1,6 @@
 export interface ContentBlock {
   id: string;
-  type: 'reading' | 'video' | 'short_answer' | 'mcq' | 'fill_blanks' | 'true_false' | 'drag_drop';
+  type: 'reading' | 'video' | 'short_answer' | 'mcq' | 'fill_blanks' | 'true_false' | 'drag_drop' | 'long_text';
   data: any;
 }
 
@@ -15,7 +15,6 @@ export interface Module {
   id: string;
   name: string;
   description: string;
-  grade: string;
   createdAt: string;
 }
 
@@ -25,7 +24,16 @@ export interface Lesson {
   name: string;
   description: string;
   thumbnail: string;
-  grade: string;
   chapters: Chapter[];
+  createdAt: string;
+}
+
+export interface LearningPath {
+  id: string;
+  name: string;
+  description: string;
+  moduleId: string;
+  stars: number;
+  starLessons: (string | null)[];
   createdAt: string;
 }

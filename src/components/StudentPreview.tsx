@@ -12,7 +12,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { Chapter, ContentBlock, Lesson } from './LessonModal';
+import { Chapter, ContentBlock, Lesson } from '../types';
 
 interface StudentPreviewProps {
   lesson: Lesson;
@@ -68,6 +68,10 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
         const userOrder = answers[block.id] || [];
         isCorrect = JSON.stringify(userOrder) === JSON.stringify(block.data.answers);
         message = isCorrect ? "Correct order!" : "Incorrect order.";
+        break;
+      case 'long_text':
+        isCorrect = true; // Long text is subjective, we just mark as "submitted"
+        message = "Response submitted! Your instructor will review this.";
         break;
     }
 
@@ -462,6 +466,74 @@ export default function StudentPreview({ lesson, initialChapterIndex = 0, onClos
                               </span>
                             ))}
                           </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {block.type === 'long_text' && (
+                    <div className="card p-8 space-y-6">
+                      <div className="space-y-2">
+                        <h4 className="text-xl font-bold text-aquire-black rich-editor-content" dangerouslySetInnerHTML={{ __html: block.data.question }}></h4>
+                        {block.data.description && (
+                          <div className="text-aquire-grey-med text-sm rich-editor-content" dangerouslySetInnerHTML={{ __html: block.data.description }}></div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <textarea 
+                            value={answers[block.id] || ''}
+                            onChange={(e) => handleAnswerChange(block.id, e.target.value)}
+                            disabled={!!feedback[block.id]}
+                            className="w-full min-h-[200px] p-6 rounded-3xl border-2 border-aquire-border focus:border-aquire-primary focus:ring-4 focus:ring-aquire-primary/10 transition-all bg-white text-aquire-black resize-none"
+                            placeholder="Type your detailed response here..."
+                          />
+                          <div className="absolute bottom-4 right-6 text-[10px] font-bold text-aquire-grey-med uppercase tracking-widest">
+                            { (answers[block.id] || '').length } characters
+                          </div>
+                        </div>
+
+                        {showAnswers && (
+                          <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            className="space-y-4 pt-4 border-t border-aquire-border"
+                          >
+                            {block.data.expected_answer && (
+                              <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-100">
+                                <h5 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2">Expected Answer</h5>
+                                <div className="text-sm text-emerald-700 rich-editor-content" dangerouslySetInnerHTML={{ __html: block.data.expected_answer }}></div>
+                              </div>
+                            )}
+                            {block.data.keywords && (
+                              <div className="p-6 rounded-2xl bg-blue-50 border border-blue-100">
+                                <h5 className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Target Keywords</h5>
+                                <div className="flex flex-wrap gap-2">
+                                  {block.data.keywords.split(',').map((kw: string, idx: number) => (
+                                    <span key={idx} className="px-3 py-1 bg-white border border-blue-200 rounded-lg text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                                      {kw.trim()}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </div>
+
+                      {!feedback[block.id] ? (
+                        <button 
+                          disabled={!(answers[block.id] || '').trim()}
+                          onClick={() => checkAnswer(block)}
+                          className="btn-primary w-full py-4 disabled:opacity-50"
+                        >
+                          Submit Response
+                        </button>
+                      ) : (
+                        <div className="p-4 rounded-2xl flex items-center gap-3 bg-blue-50 text-blue-600 border border-blue-100">
+                          <CheckCircle2 size={20} />
+                          <p className="font-bold text-sm">{feedback[block.id].message}</p>
                         </div>
                       )}
                     </div>

@@ -25,14 +25,18 @@ import {
   List,
   GraduationCap,
   Eye,
-  Layers
+  Layers,
+  Star
 } from "lucide-react";
-import ModuleModal, { Module } from "./ModuleModal";
+import ModuleModal from "./ModuleModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
-import LessonModal, { Lesson, Chapter, ContentBlock } from "./LessonModal";
+import LessonModal from "./LessonModal";
+import { Module, Lesson, Chapter, ContentBlock, LearningPath } from "../types";
 import ChapterModal from "./ChapterModal";
 import ChapterEditor from "./ChapterEditor";
 import StudentPreview from "./StudentPreview";
+import LearningPathModal from "./LearningPathModal";
+import LearningPathPreview from "./LearningPathPreview";
 
 interface DashboardContentProps {
   activeTab: string;
@@ -188,12 +192,51 @@ const generateLessons = (): Lesson[] => {
             }
           }]
         };
+      case 'long_text':
+        let question = `Explain the importance of ${lessonName} in your own words.`;
+        let description = "Provide a detailed explanation with examples.";
+        let expected = `The importance of ${lessonName} lies in its ability to enhance the overall quality of writing within ${modName}. By focusing on these principles, writers can create more engaging and effective content.`;
+        let keywords = `${lessonName.toLowerCase()}, ${modName.toLowerCase()}, writing, quality`;
+
+        if (modName === "Narrative Writing") {
+          if (lessonName.includes("Character")) {
+            question = "Describe your favorite character from a book or movie in detail.";
+            description = "Focus on their personality, motivations, and physical appearance. Use descriptive language.";
+            expected = "A good character description should include both internal and external traits. For example, Harry Potter is known for his bravery (internal) and his lightning-shaped scar (external).";
+            keywords = "character, personality, motivation, appearance, traits";
+          } else if (lessonName.includes("Plot")) {
+            question = "Explain the standard plot structure of a narrative story.";
+            description = "Include the introduction, rising action, climax, falling action, and resolution.";
+            expected = "The plot structure typically follows a curve starting with the exposition, followed by rising action leading to the climax, then falling action, and finally the resolution.";
+            keywords = "plot, structure, climax, resolution, exposition";
+          } else if (lessonName.includes("Story")) {
+            question = "Write a persuasive paragraph about why reading is important.";
+            description = "Use at least three strong arguments to support your point of view.";
+            expected = "Reading is essential because it expands knowledge, improves vocabulary, and reduces stress. It allows us to experience different perspectives and cultures.";
+            keywords = "persuasive, reading, knowledge, vocabulary, stress";
+          }
+        }
+
+        return {
+          name: `📝 ${lessonName} Essay`,
+          blocks: [{
+            id: `b-lt-${Math.random()}`,
+            type: 'long_text' as const,
+            data: {
+              question,
+              description,
+              expected_answer: expected,
+              keywords,
+              marks: 10
+            }
+          }]
+        };
       default:
         return { name: "Chapter", blocks: [] };
     }
   };
 
-  const chapterTypes = ['reading', 'video', 'short_answer', 'mcq', 'fill_blanks', 'true_false', 'drag_drop'];
+  const chapterTypes = ['reading', 'video', 'short_answer', 'mcq', 'fill_blanks', 'true_false', 'drag_drop', 'long_text'];
 
   moduleData.forEach((mod) => {
     mod.lessonNames.forEach((lessonName, lessonIdx) => {
@@ -227,10 +270,12 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   // Modules State
   const [modules, setModules] = useState<Module[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
   
   // UI State
   const [searchQuery, setSearchQuery] = useState("");
   const [moduleFilter, setModuleFilter] = useState("all");
+  const [starFilter, setStarFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -242,31 +287,45 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [isChapterModalOpen, setIsChapterModalOpen] = useState(false);
+  const [isLearningPathModalOpen, setIsLearningPathModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
   const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
-  const [itemToDelete, setItemToDelete] = useState<{ id: string; type: "module" | "lesson" | "chapter" } | null>(null);
+  const [editingPath, setEditingPath] = useState<LearningPath | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; type: "module" | "lesson" | "chapter" | "learning-path" } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Preview State
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null);
   const [previewChapterIndex, setPreviewChapterIndex] = useState(0);
+  const [isPathPreviewOpen, setIsPathPreviewOpen] = useState(false);
+  const [previewPath, setPreviewPath] = useState<LearningPath | null>(null);
 
   // Load data from localStorage
   useEffect(() => {
     const savedModules = localStorage.getItem("aquire_modules");
     const savedLessons = localStorage.getItem("aquire_lessons");
+    const savedPaths = localStorage.getItem("aquire_learning_paths");
     
     // Check if we need to force update to the new writing curriculum
     let needsUpdate = true;
     try {
-      if (savedModules) {
-        const parsed = JSON.parse(savedModules);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed.some(m => m.name === "Narrative Writing")) {
-          needsUpdate = false;
+      if (savedModules && savedLessons) {
+        const parsedModules = JSON.parse(savedModules);
+        const parsedLessons = JSON.parse(savedLessons);
+        if (Array.isArray(parsedModules) && parsedModules.length > 0 && parsedModules.some(m => m.name === "Narrative Writing")) {
+          // Check if any lesson has a long_text block
+          const hasLongText = parsedLessons.some((l: any) => 
+            l.chapters.some((c: any) => 
+              c.blocks.some((b: any) => b.type === 'long_text')
+            )
+          );
+          if (hasLongText) {
+            needsUpdate = false;
+          }
         }
       }
     } catch (e) {
@@ -276,11 +335,14 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     if (needsUpdate) {
       setModules(INITIAL_MODULES);
       setLessons(INITIAL_LESSONS);
+      setLearningPaths([]);
       localStorage.setItem("aquire_modules", JSON.stringify(INITIAL_MODULES));
       localStorage.setItem("aquire_lessons", JSON.stringify(INITIAL_LESSONS));
+      localStorage.setItem("aquire_learning_paths", JSON.stringify([]));
     } else {
       setModules(JSON.parse(savedModules!));
       setLessons(JSON.parse(savedLessons!));
+      if (savedPaths) setLearningPaths(JSON.parse(savedPaths));
     }
   }, []);
 
@@ -293,6 +355,11 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   const saveLessons = (updatedLessons: Lesson[]) => {
     setLessons(updatedLessons);
     localStorage.setItem("aquire_lessons", JSON.stringify(updatedLessons));
+  };
+
+  const saveLearningPaths = (updatedPaths: LearningPath[]) => {
+    setLearningPaths(updatedPaths);
+    localStorage.setItem("aquire_learning_paths", JSON.stringify(updatedPaths));
   };
 
   // CRUD Handlers - Modules
@@ -383,11 +450,33 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
       });
       saveLessons(updated);
       showToast("Chapter deleted successfully!", "success");
+    } else if (itemToDelete.type === "learning-path") {
+      const updated = learningPaths.filter(p => p.id !== itemToDelete.id);
+      saveLearningPaths(updated);
+      showToast("Learning Path deleted successfully!", "success");
     }
 
     setIsDeleting(false);
     setIsDeleteModalOpen(false);
     setItemToDelete(null);
+  };
+
+  const handleSaveLearningPath = (data: Omit<LearningPath, "id" | "createdAt">) => {
+    if (editingPath) {
+      const updated = learningPaths.map(p => p.id === editingPath.id ? { ...p, ...data } : p);
+      saveLearningPaths(updated);
+      showToast("Learning Path updated successfully!", "success");
+    } else {
+      const newPath: LearningPath = {
+        id: "lp" + Math.random().toString(36).substr(2, 9),
+        ...data,
+        createdAt: new Date().toISOString(),
+      };
+      saveLearningPaths([newPath, ...learningPaths]);
+      showToast("Learning Path created successfully!", "success");
+    }
+    setIsLearningPathModalOpen(false);
+    setEditingPath(null);
   };
 
   // Filtering & Sorting
@@ -417,8 +506,25 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     return result;
   }, [lessons, searchQuery, moduleFilter, sortOrder]);
 
+  const filteredLearningPaths = useMemo(() => {
+    let result = learningPaths.filter(p => {
+      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          p.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesModule = moduleFilter === "all" || p.moduleId === moduleFilter;
+      const matchesStars = starFilter === "all" || p.stars.toString() === starFilter;
+      return matchesSearch && matchesModule && matchesStars;
+    });
+    result.sort((a, b) => {
+      const comparison = a.name.localeCompare(b.name);
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+    return result;
+  }, [learningPaths, searchQuery, moduleFilter, starFilter, sortOrder]);
+
   // Pagination
-  const currentItems = activeTab === "modules" ? filteredModules : filteredLessons;
+  const currentItems = activeTab === "modules" ? filteredModules : 
+                      activeTab === "lessons" ? filteredLessons : 
+                      activeTab === "learning-paths" ? filteredLearningPaths : [];
   const totalPages = Math.ceil(currentItems.length / itemsPerPage);
   const paginatedItems = currentItems.slice(
     (currentPage - 1) * itemsPerPage,
@@ -1130,6 +1236,175 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     );
   };
 
+  const renderLearningPaths = () => {
+    return (
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="space-y-6"
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-aquire-grey-med text-xs font-bold uppercase tracking-widest mb-1">
+              <span>Academic</span>
+              <ChevronRight size={12} />
+              <span className="text-aquire-primary">Learning Paths</span>
+            </div>
+            <h2 className="text-3xl font-bold text-aquire-black">Learning Paths</h2>
+            <p className="text-aquire-grey-med">Create and manage sequential learning journeys for students.</p>
+          </div>
+          <button 
+            onClick={() => {
+              setEditingPath(null);
+              setIsLearningPathModalOpen(true);
+            }}
+            className="btn-primary"
+          >
+            <Plus size={20} />
+            Create Learning Path
+          </button>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="flex-1 relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-5 h-5" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search paths..." 
+              className="w-full pl-12 pr-4 py-4 input-field"
+            />
+          </div>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative">
+              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-4 h-4" />
+              <select
+                value={moduleFilter}
+                onChange={(e) => setModuleFilter(e.target.value)}
+                className="pl-10 pr-10 py-4 bg-white border border-aquire-border rounded-xl text-aquire-grey-dark text-sm font-bold appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-aquire-primary/20"
+              >
+                <option value="all">All Modules</option>
+                {modules.map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-4 h-4 pointer-events-none" />
+            </div>
+            <div className="relative">
+              <Star className="absolute left-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-4 h-4" />
+              <select
+                value={starFilter}
+                onChange={(e) => setStarFilter(e.target.value)}
+                className="pl-10 pr-10 py-4 bg-white border border-aquire-border rounded-xl text-aquire-grey-dark text-sm font-bold appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-aquire-primary/20"
+              >
+                <option value="all">All Stars</option>
+                {[5, 10, 15, 20].map(n => (
+                  <option key={n} value={n.toString()}>{n} Stars</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-4 h-4 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-aquire-border text-aquire-grey-med text-[10px] uppercase tracking-[0.2em] font-bold">
+                  <th className="px-6 py-4">Path Details</th>
+                  <th className="px-6 py-4">Module</th>
+                  <th className="px-6 py-4">Stars</th>
+                  <th className="px-6 py-4">Lessons</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                <AnimatePresence mode="popLayout">
+                  {(paginatedItems as LearningPath[]).map((path) => (
+                    <motion.tr 
+                      key={path.id}
+                      layout
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="border-b border-aquire-border hover:bg-aquire-grey-light transition-colors group"
+                    >
+                      <td className="px-6 py-4">
+                        <div>
+                          <h4 className="text-aquire-text-heading font-bold">{path.name}</h4>
+                          <p className="text-aquire-grey-med text-xs line-clamp-1" dangerouslySetInnerHTML={{ __html: path.description }}></p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-3 py-1 rounded-full bg-aquire-grey-light text-aquire-grey-dark text-[10px] font-bold uppercase tracking-widest border border-aquire-border">
+                          {modules.find(m => m.id === path.moduleId)?.name || "Module"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 text-amber-600 font-bold">
+                          <Star size={14} fill="currentColor" />
+                          {path.stars}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 text-aquire-grey-med text-xs">
+                          <BookOpen size={14} />
+                          {path.starLessons.filter(l => l !== null).length} / {path.stars}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => {
+                              setPreviewPath(path);
+                              setIsPathPreviewOpen(true);
+                            }}
+                            className="p-3 bg-white border border-aquire-border rounded-xl text-aquire-grey-med hover:text-aquire-primary hover:border-aquire-primary transition-all"
+                            title="Preview Student Journey"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setEditingPath(path);
+                              setIsLearningPathModalOpen(true);
+                            }}
+                            className="p-3 bg-aquire-grey-light rounded-xl text-aquire-grey-med hover:text-aquire-primary hover:bg-aquire-primary/10 transition-all"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setItemToDelete({ id: path.id, type: "learning-path" });
+                              setIsDeleteModalOpen(true);
+                            }}
+                            className="p-3 bg-aquire-grey-light rounded-xl text-aquire-grey-med hover:text-red-500 hover:bg-red-50 transition-all"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+                {filteredLearningPaths.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-20 text-center text-aquire-grey-med">
+                      No learning paths found. Create your first one to get started!
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {renderPagination()}
+        </div>
+      </motion.div>
+    );
+  };
+
   const renderPagination = () => {
     if (totalPages <= 1) return null;
     return (
@@ -1194,7 +1469,8 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
       {activeTab === "dashboard" && renderDashboard()}
       {activeTab === "modules" && renderModules()}
       {activeTab === "lessons" && renderLessons()}
-      {activeTab !== "dashboard" && activeTab !== "modules" && activeTab !== "lessons" && renderPlaceholder()}
+      {activeTab === "learning-paths" && renderLearningPaths()}
+      {activeTab !== "dashboard" && activeTab !== "modules" && activeTab !== "lessons" && activeTab !== "learning-paths" && renderPlaceholder()}
 
       {/* Modals */}
       <ModuleModal 
@@ -1227,6 +1503,29 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
         onSave={handleSaveChapter}
         editingChapter={editingChapter}
       />
+
+      <LearningPathModal
+        isOpen={isLearningPathModalOpen}
+        onClose={() => {
+          setIsLearningPathModalOpen(false);
+          setEditingPath(null);
+        }}
+        onSave={handleSaveLearningPath}
+        editingPath={editingPath}
+        modules={modules}
+        lessons={lessons}
+      />
+
+      {isPathPreviewOpen && previewPath && (
+        <LearningPathPreview
+          path={previewPath}
+          lessons={lessons}
+          onClose={() => {
+            setIsPathPreviewOpen(false);
+            setPreviewPath(null);
+          }}
+        />
+      )}
 
       <DeleteConfirmModal 
         isOpen={isDeleteModalOpen}

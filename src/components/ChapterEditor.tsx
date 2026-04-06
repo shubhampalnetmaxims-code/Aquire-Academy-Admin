@@ -23,7 +23,7 @@ import {
   Upload,
   Loader2
 } from "lucide-react";
-import { Chapter, ContentBlock } from "./LessonModal";
+import { Chapter, ContentBlock } from "../types";
 import RichTextEditor from "./RichTextEditor";
 
 interface ChapterEditorProps {
@@ -42,6 +42,7 @@ const BLOCK_TYPES = [
   { type: 'fill_blanks', label: 'Fill Blanks', icon: MinusCircle, color: 'text-emerald-500' },
   { type: 'true_false', label: 'True/False', icon: CheckSquare, color: 'text-orange-500' },
   { type: 'drag_drop', label: 'Drag & Drop', icon: Move, color: 'text-cyan-500' },
+  { type: 'long_text', label: 'Long Text', icon: HelpCircle, color: 'text-blue-600' },
 ];
 
 export default function ChapterEditor({ chapter, onSave, onUpdate, onBack, showToast }: ChapterEditorProps) {
@@ -90,6 +91,7 @@ export default function ChapterEditor({ chapter, onSave, onUpdate, onBack, showT
       case 'fill_blanks': return { text: '', answers: [] };
       case 'true_false': return { statement: '', isTrue: true };
       case 'drag_drop': return { paragraph: '', items: [] };
+      case 'long_text': return { question: '', description: '', expected_answer: '', keywords: '', marks: 10 };
       default: return {};
     }
   };
@@ -455,6 +457,57 @@ export default function ChapterEditor({ chapter, onSave, onUpdate, onBack, showT
               >
                 <Plus size={16} /> Add Draggable Item
               </button>
+            </div>
+          </div>
+        );
+      case 'long_text':
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-aquire-grey-med uppercase tracking-widest">Question Title (Rich Editor)</label>
+              <RichTextEditor 
+                value={data.question}
+                onChange={(val) => updateBlockData(block.id, { ...data, question: val })}
+                placeholder="Enter long text question..."
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-aquire-grey-med uppercase tracking-widest">Question Description (Optional)</label>
+              <RichTextEditor 
+                value={data.description}
+                onChange={(val) => updateBlockData(block.id, { ...data, description: val })}
+                placeholder="Enter description or instructions..."
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-aquire-grey-med uppercase tracking-widest">Expected Answer (Rich Editor)</label>
+              <RichTextEditor 
+                value={data.expected_answer}
+                onChange={(val) => updateBlockData(block.id, { ...data, expected_answer: val })}
+                placeholder="Enter the ideal answer for reference..."
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-aquire-grey-med uppercase tracking-widest">Keywords (comma-separated)</label>
+                <input 
+                  type="text"
+                  value={data.keywords}
+                  onChange={(e) => updateBlockData(block.id, { ...data, keywords: e.target.value })}
+                  className="w-full input-field p-3 text-sm"
+                  placeholder="e.g. gravity, force, mass"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-aquire-grey-med uppercase tracking-widest">Marks</label>
+                <input 
+                  type="number"
+                  value={data.marks}
+                  onChange={(e) => updateBlockData(block.id, { ...data, marks: parseInt(e.target.value) || 0 })}
+                  className="w-full input-field p-3 text-sm"
+                  placeholder="10"
+                />
+              </div>
             </div>
           </div>
         );

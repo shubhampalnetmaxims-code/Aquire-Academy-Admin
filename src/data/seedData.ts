@@ -188,7 +188,6 @@ export const generateSeedData = () => {
         id: moduleId,
         name: modData.name,
         description: modData.description,
-        grade: grade,
         createdAt: new Date().toISOString()
       });
 
@@ -200,7 +199,6 @@ export const generateSeedData = () => {
           name: lessonName,
           description: "Comprehensive lesson on " + lessonName + " for " + grade + ".",
           thumbnail: `https://picsum.photos/seed/${lessonId}/400/300`,
-          grade: grade,
           chapters: generateChaptersForLesson(lessonName, grade),
           createdAt: new Date().toISOString()
         });

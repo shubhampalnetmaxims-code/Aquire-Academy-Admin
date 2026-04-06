@@ -13,7 +13,8 @@ import {
   User,
   LayoutDashboard,
   Menu,
-  X
+  X,
+  Book
 } from "lucide-react";
 
 interface SidebarProps {
@@ -42,6 +43,7 @@ export default function Sidebar({ onLogout, activeTab, setActiveTab }: SidebarPr
       submenu: [
         { id: "modules", label: "Modules", icon: <Layers size={18} /> },
         { id: "lessons", label: "Lessons", icon: <BookOpen size={18} /> },
+        { id: "learning-paths", label: "Learning Paths", icon: <Book size={18} /> },
         { id: "skills", label: "Skill-Based Lessons", icon: <Trophy size={18} /> },
       ]
     },

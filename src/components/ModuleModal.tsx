@@ -15,7 +15,6 @@ interface ModuleModalProps {
 export default function ModuleModal({ isOpen, onClose, onSave, editingModule }: ModuleModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [grade, setGrade] = useState("Grade 2");
   const [errors, setErrors] = useState<{ name?: string; description?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -23,11 +22,9 @@ export default function ModuleModal({ isOpen, onClose, onSave, editingModule }: 
     if (editingModule) {
       setName(editingModule.name);
       setDescription(editingModule.description);
-      setGrade(editingModule.grade || "Grade 2");
     } else {
       setName("");
       setDescription("");
-      setGrade("Grade 2");
     }
     setErrors({});
   }, [editingModule, isOpen]);
@@ -50,7 +47,7 @@ export default function ModuleModal({ isOpen, onClose, onSave, editingModule }: 
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    onSave({ name, description, grade });
+    onSave({ name, description });
     setIsSubmitting(false);
     onClose();
   };
@@ -112,25 +109,8 @@ export default function ModuleModal({ isOpen, onClose, onSave, editingModule }: 
 
               <div className="space-y-2">
                 <label className="block text-sm font-bold text-aquire-grey-dark ml-1">
-                  Grade Level
+                  Description
                 </label>
-                <select
-                  value={grade}
-                  onChange={(e) => setGrade(e.target.value)}
-                  className="w-full px-6 py-4 rounded-2xl input-field appearance-none bg-white"
-                >
-                  {["Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7"].map(g => (
-                    <option key={g} value={g}>{g}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center px-1">
-                  <label className="block text-sm font-bold text-aquire-grey-dark">
-                    Description
-                  </label>
-                </div>
                 <RichTextEditor
                   value={description}
                   onChange={setDescription}
