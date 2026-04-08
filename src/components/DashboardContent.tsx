@@ -27,6 +27,8 @@ import {
   Eye,
   Layers,
   Star,
+  Sparkles,
+  Trophy,
   Database,
   ClipboardList,
   Copy,
@@ -43,8 +45,10 @@ import ChapterEditor from "./ChapterEditor";
 import StudentPreview from "./StudentPreview";
 import LearningPathModal from "./LearningPathModal";
 import LearningPathPreview from "./LearningPathPreview";
+import LearningPathZigZagPreview from "./LearningPathZigZagPreview";
 import QuestionBankModal from "./QuestionBankModal";
 import QuestionBankPreview from "./QuestionBankPreview";
+import SkillLessonModal from "./SkillLessonModal";
 
 interface DashboardContentProps {
   activeTab: string;
@@ -325,6 +329,7 @@ const generateLessons = (): Lesson[] => {
         });
       }
 
+      const isSkillLesson = lessonIdx % 3 === 0;
       lessons.push({
         id: lessonId,
         moduleId: mod.id,
@@ -332,7 +337,10 @@ const generateLessons = (): Lesson[] => {
         description: `Comprehensive guide to ${lessonName} for grades 3-7.`,
         thumbnail: `https://picsum.photos/seed/${lessonId}/400/300`,
         createdAt: new Date().toISOString(),
-        chapters
+        chapters,
+        isSkillLesson: isSkillLesson,
+        starNumber: isSkillLesson ? (lessonIdx % 5) + 1 : undefined,
+        learningPathId: isSkillLesson ? (mod.id === 'm1' ? 'lp1' : (mod.id === 'm2' ? 'lp2' : 'lp3')) : undefined
       });
     });
   });
@@ -412,6 +420,57 @@ const INITIAL_QUESTION_BANKS: QuestionBank[] = [
   }
 ];
 
+const INITIAL_LEARNING_PATHS: LearningPath[] = [
+  {
+    id: "lp1",
+    name: "Writing Mastery",
+    description: "Master the art of narrative and persuasive writing through a series of progressive challenges.",
+    moduleId: "m1",
+    stars: 5,
+    starLessons: ["l-m1-1", "l-m1-2", "l-m1-3", "l-m1-4", "l-m1-5"],
+    starsData: [
+      { star: 1, mainLessonId: "l-m1-1", skillLessonIds: ["l-m2-1", "l-m2-2"] },
+      { star: 2, mainLessonId: "l-m1-2", skillLessonIds: ["l-m2-3", "l-m2-4"] },
+      { star: 3, mainLessonId: "l-m1-3", skillLessonIds: ["l-m2-5"] },
+      { star: 4, mainLessonId: "l-m1-4", skillLessonIds: ["l-m2-6", "l-m2-7"] },
+      { star: 5, mainLessonId: "l-m1-5", skillLessonIds: ["l-m2-8"] }
+    ],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "lp2",
+    name: "Punctuation Pro",
+    description: "Become a punctuation expert by mastering every mark from commas to semicolons.",
+    moduleId: "m2",
+    stars: 4,
+    starLessons: ["l-m2-1", "l-m2-2", "l-m2-3", "l-m2-4"],
+    starsData: [
+      { star: 1, mainLessonId: "l-m2-1", skillLessonIds: ["l-m3-1", "l-m3-2"] },
+      { star: 2, mainLessonId: "l-m2-2", skillLessonIds: ["l-m3-3"] },
+      { star: 3, mainLessonId: "l-m2-3", skillLessonIds: ["l-m3-4", "l-m3-5"] },
+      { star: 4, mainLessonId: "l-m2-4", skillLessonIds: ["l-m3-6"] }
+    ],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "lp3",
+    name: "Edit Expert",
+    description: "Learn the professional techniques to review and refine any piece of writing.",
+    moduleId: "m3",
+    stars: 6,
+    starLessons: ["l-m3-1", "l-m3-2", "l-m3-3", "l-m3-4", "l-m3-5", "l-m3-6"],
+    starsData: [
+      { star: 1, mainLessonId: "l-m3-1", skillLessonIds: ["l-m1-1"] },
+      { star: 2, mainLessonId: "l-m3-2", skillLessonIds: ["l-m1-2"] },
+      { star: 3, mainLessonId: "l-m3-3", skillLessonIds: ["l-m1-3"] },
+      { star: 4, mainLessonId: "l-m3-4", skillLessonIds: ["l-m1-4"] },
+      { star: 5, mainLessonId: "l-m3-5", skillLessonIds: ["l-m1-5"] },
+      { star: 6, mainLessonId: "l-m3-6", skillLessonIds: ["l-m1-6"] }
+    ],
+    createdAt: new Date().toISOString()
+  }
+];
+
 export default function DashboardContent({ activeTab, showToast }: DashboardContentProps) {
   // Modules State
   const [modules, setModules] = useState<Module[]>([]);
@@ -436,6 +495,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   const [isChapterModalOpen, setIsChapterModalOpen] = useState(false);
   const [isLearningPathModalOpen, setIsLearningPathModalOpen] = useState(false);
   const [isQuestionBankModalOpen, setIsQuestionBankModalOpen] = useState(false);
+  const [isSkillLessonModalOpen, setIsSkillLessonModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
   const [editingModule, setEditingModule] = useState<Module | null>(null);
@@ -451,6 +511,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null);
   const [previewChapterIndex, setPreviewChapterIndex] = useState(0);
   const [isPathPreviewOpen, setIsPathPreviewOpen] = useState(false);
+  const [isPreviewZigZag, setIsPreviewZigZag] = useState(true);
   const [previewPath, setPreviewPath] = useState<LearningPath | null>(null);
   const [isBankPreviewOpen, setIsBankPreviewOpen] = useState(false);
   const [previewBank, setPreviewBank] = useState<QuestionBank | null>(null);
@@ -480,8 +541,10 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
           const hasSeedData = parsedLessons.some((l: any) => l.name === "Seed Data Test");
           // Check for Question Banks
           const hasBanks = Array.isArray(parsedBanks) && parsedBanks.length > 0;
+          // Check for Skill Lessons
+          const hasSkillLessons = parsedLessons.some((l: any) => l.isSkillLesson === true);
 
-          if (hasLongText && hasSeedData && hasBanks) {
+          if (hasLongText && hasSeedData && hasBanks && hasSkillLessons) {
             needsUpdate = false;
           }
         }
@@ -493,11 +556,11 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     if (needsUpdate) {
       setModules(INITIAL_MODULES);
       setLessons(INITIAL_LESSONS);
-      setLearningPaths([]);
+      setLearningPaths(INITIAL_LEARNING_PATHS);
       setQuestionBanks(INITIAL_QUESTION_BANKS);
       localStorage.setItem("aquire_modules", JSON.stringify(INITIAL_MODULES));
       localStorage.setItem("aquire_lessons", JSON.stringify(INITIAL_LESSONS));
-      localStorage.setItem("aquire_learning_paths", JSON.stringify([]));
+      localStorage.setItem("aquire_learning_paths", JSON.stringify(INITIAL_LEARNING_PATHS));
       localStorage.setItem("aquire_question_banks", JSON.stringify(INITIAL_QUESTION_BANKS));
     } else {
       setModules(JSON.parse(savedModules!));
@@ -547,22 +610,90 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     setEditingModule(null);
   };
 
+  const handleSaveSkillLesson = (lessonId: string, data: { isSkillLesson: boolean; learningPathId: string; starNumber: number }) => {
+    const updated = lessons.map(l => l.id === lessonId ? { ...l, ...data } : l);
+    saveLessons(updated);
+    showToast("Skill lesson assignment saved!", "success");
+    
+    // Also update the learning path group if needed
+    const savedLesson = updated.find(l => l.id === lessonId);
+    if (savedLesson && savedLesson.isSkillLesson && savedLesson.learningPathId) {
+      const updatedPaths = learningPaths.map(p => {
+        if (p.id === savedLesson.learningPathId) {
+          const starsData = p.starsData || [];
+          const starIdx = starsData.findIndex(s => s.star === savedLesson.starNumber);
+          
+          if (starIdx > -1) {
+            const updatedStarsData = [...starsData];
+            if (!updatedStarsData[starIdx].skillLessonIds.includes(savedLesson.id)) {
+              updatedStarsData[starIdx].skillLessonIds = [...updatedStarsData[starIdx].skillLessonIds, savedLesson.id];
+            }
+            return { ...p, starsData: updatedStarsData };
+          } else {
+            return {
+              ...p,
+              starsData: [...starsData, {
+                star: savedLesson.starNumber!,
+                mainLessonId: null,
+                skillLessonIds: [savedLesson.id]
+              }]
+            };
+          }
+        }
+        return p;
+      });
+      saveLearningPaths(updatedPaths);
+    }
+  };
+
   // CRUD Handlers - Lessons
   const handleSaveLesson = (data: Omit<Lesson, "id" | "chapters" | "createdAt">) => {
+    let savedLesson: Lesson;
     if (editingLesson) {
-      const updated = lessons.map(l => l.id === editingLesson.id ? { ...l, ...data } : l);
+      savedLesson = { ...editingLesson, ...data };
+      const updated = lessons.map(l => l.id === editingLesson.id ? savedLesson : l);
       saveLessons(updated);
       showToast("Lesson updated successfully!", "success");
     } else {
-      const newLesson: Lesson = {
+      savedLesson = {
         id: "l" + Math.random().toString(36).substr(2, 9),
         ...data,
         chapters: [],
         createdAt: new Date().toISOString(),
       };
-      saveLessons([newLesson, ...lessons]);
+      saveLessons([savedLesson, ...lessons]);
       showToast("Lesson created successfully!", "success");
     }
+
+    // Update Learning Path if it's a skill lesson
+    if (savedLesson.isSkillLesson && savedLesson.learningPathId) {
+      const updatedPaths = learningPaths.map(p => {
+        if (p.id === savedLesson.learningPathId) {
+          const starsData = p.starsData || [];
+          const starIdx = starsData.findIndex(s => s.star === savedLesson.starNumber);
+          
+          if (starIdx > -1) {
+            const updatedStarsData = [...starsData];
+            if (!updatedStarsData[starIdx].skillLessonIds.includes(savedLesson.id)) {
+              updatedStarsData[starIdx].skillLessonIds = [...updatedStarsData[starIdx].skillLessonIds, savedLesson.id];
+            }
+            return { ...p, starsData: updatedStarsData };
+          } else {
+            return {
+              ...p,
+              starsData: [...starsData, {
+                star: savedLesson.starNumber!,
+                mainLessonId: null,
+                skillLessonIds: [savedLesson.id]
+              }]
+            };
+          }
+        }
+        return p;
+      });
+      saveLearningPaths(updatedPaths);
+    }
+
     setIsLessonModalOpen(false);
     setEditingLesson(null);
   };
@@ -1424,6 +1555,154 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     );
   };
 
+  const renderSkills = () => {
+    const skillLessons = lessons.filter(l => l.isSkillLesson);
+    const filteredSkills = skillLessons.filter(l => l.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    return (
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="space-y-6"
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-aquire-grey-med text-xs font-bold uppercase tracking-widest mb-1">
+              <span>Academic</span>
+              <ChevronRight size={12} />
+              <span className="text-aquire-primary">Skill-Based Lessons</span>
+            </div>
+            <h2 className="text-3xl font-bold text-aquire-black">Skill-Based Lessons</h2>
+            <p className="text-aquire-grey-med">Manage floating lessons that reinforce specific skills within learning paths.</p>
+          </div>
+          <button 
+            onClick={() => setIsSkillLessonModalOpen(true)}
+            className="btn-primary"
+          >
+            <Plus size={20} />
+            Add Skill Lesson
+          </button>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="flex-1 relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-5 h-5" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search skill lessons..." 
+              className="w-full pl-12 pr-4 py-4 input-field"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {filteredSkills.map((lesson) => (
+            <motion.div
+              key={lesson.id}
+              layout
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="card p-4 flex items-center gap-6 hover:border-aquire-primary transition-all group"
+            >
+              <div className="w-20 h-12 rounded-lg overflow-hidden shrink-0 border border-aquire-border">
+                <img 
+                  src={lesson.thumbnail} 
+                  alt={lesson.name}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] font-black text-aquire-primary uppercase tracking-widest">
+                    {modules.find(m => m.id === lesson.moduleId)?.name || "General"}
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-aquire-grey-med" />
+                  <span className="text-[10px] font-bold text-aquire-grey-med uppercase tracking-widest">
+                    {lesson.chapters.length} Chapters
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-aquire-black truncate group-hover:text-aquire-primary transition-colors">
+                  {lesson.name}
+                </h3>
+              </div>
+
+              <div className="hidden md:flex flex-col items-end shrink-0 px-6 border-x border-aquire-border">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-aquire-black">
+                  <Trophy size={14} className="text-amber-500" />
+                  <span>Star {lesson.starNumber}</span>
+                </div>
+                <span className="text-[10px] font-medium text-aquire-grey-med italic">
+                  {learningPaths.find(p => p.id === lesson.learningPathId)?.name}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button 
+                  onClick={() => {
+                    setPreviewLesson(lesson);
+                    setPreviewChapterIndex(0);
+                    setIsPreviewOpen(true);
+                  }}
+                  className="p-2 hover:bg-aquire-grey-light rounded-xl text-aquire-grey-med hover:text-aquire-primary transition-all"
+                  title="Preview"
+                >
+                  <Eye size={18} />
+                </button>
+                <button 
+                  onClick={() => {
+                    setEditingLesson(lesson);
+                    setIsLessonModalOpen(true);
+                  }}
+                  className="p-2 hover:bg-aquire-grey-light rounded-xl text-aquire-grey-med hover:text-aquire-primary transition-all"
+                  title="Edit"
+                >
+                  <Edit size={18} />
+                </button>
+                <button 
+                  onClick={() => {
+                    const updated = lessons.map(l => 
+                      l.id === lesson.id ? { ...l, isSkillLesson: false, learningPathId: undefined, starNumber: undefined } : l
+                    );
+                    saveLessons(updated);
+                    showToast("Skill lesson removed", "success");
+                  }}
+                  className="p-2 hover:bg-red-50 text-aquire-grey-med hover:text-red-500 transition-all"
+                  title="Remove Skill Assignment"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {skillLessons.length === 0 && (
+          <div className="py-20 text-center card border-dashed border-2 border-aquire-border bg-transparent shadow-none">
+            <div className="w-16 h-16 bg-aquire-grey-light rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Trophy size={32} className="text-aquire-grey-med" />
+            </div>
+            <h3 className="text-xl font-bold text-aquire-black mb-2">No Skill Lessons Found</h3>
+            <p className="text-aquire-grey-med max-w-sm mx-auto mb-8">
+              Skill lessons are floating lessons that reinforce specific skills. Add one to get started!
+            </p>
+            <button 
+              onClick={() => setIsSkillLessonModalOpen(true)}
+              className="btn-primary"
+            >
+              <Plus size={20} />
+              Add First Skill Lesson
+            </button>
+          </div>
+        )}
+      </motion.div>
+    );
+  };
+
   const renderLearningPaths = () => {
     return (
       <motion.div 
@@ -1547,10 +1826,22 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
                           <button 
                             onClick={() => {
                               setPreviewPath(path);
+                              setIsPreviewZigZag(true);
                               setIsPathPreviewOpen(true);
                             }}
                             className="p-3 bg-white border border-aquire-border rounded-xl text-aquire-grey-med hover:text-aquire-primary hover:border-aquire-primary transition-all"
-                            title="Preview Student Journey"
+                            title="Gamified Zig-Zag Preview"
+                          >
+                            <Sparkles size={18} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setPreviewPath(path);
+                              setIsPreviewZigZag(false);
+                              setIsPathPreviewOpen(true);
+                            }}
+                            className="p-3 bg-white border border-aquire-border rounded-xl text-aquire-grey-med hover:text-aquire-primary hover:border-aquire-primary transition-all"
+                            title="Sequential Preview"
                           >
                             <Eye size={18} />
                           </button>
@@ -1763,6 +2054,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
 
   const formatTabName = (tab: string) => {
     if (tab === "dashboard") return "Dashboard Overview";
+    if (tab === "skills") return "Skill-Based Lessons";
     return tab.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
@@ -1788,9 +2080,10 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
       {activeTab === "dashboard" && renderDashboard()}
       {activeTab === "modules" && renderModules()}
       {activeTab === "lessons" && renderLessons()}
+      {activeTab === "skills" && renderSkills()}
       {activeTab === "learning-paths" && renderLearningPaths()}
       {activeTab === "assessments" && renderAssessments()}
-      {activeTab !== "dashboard" && activeTab !== "modules" && activeTab !== "lessons" && activeTab !== "learning-paths" && activeTab !== "assessments" && renderPlaceholder()}
+      {activeTab !== "dashboard" && activeTab !== "modules" && activeTab !== "lessons" && activeTab !== "skills" && activeTab !== "learning-paths" && activeTab !== "assessments" && renderPlaceholder()}
 
       {/* Modals */}
       <ModuleModal 
@@ -1812,6 +2105,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
         onSave={handleSaveLesson}
         editingLesson={editingLesson}
         modules={modules}
+        learningPaths={learningPaths}
       />
 
       <ChapterModal
@@ -1847,14 +2141,25 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
       />
 
       {isPathPreviewOpen && previewPath && (
-        <LearningPathPreview
-          path={previewPath}
-          lessons={lessons}
-          onClose={() => {
-            setIsPathPreviewOpen(false);
-            setPreviewPath(null);
-          }}
-        />
+        isPreviewZigZag ? (
+          <LearningPathZigZagPreview 
+            path={previewPath}
+            lessons={lessons}
+            onClose={() => {
+              setIsPathPreviewOpen(false);
+              setPreviewPath(null);
+            }}
+          />
+        ) : (
+          <LearningPathPreview 
+            path={previewPath}
+            lessons={lessons}
+            onClose={() => {
+              setIsPathPreviewOpen(false);
+              setPreviewPath(null);
+            }}
+          />
+        )
       )}
 
       {isBankPreviewOpen && previewBank && (
@@ -1866,6 +2171,15 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
           }}
         />
       )}
+
+      <SkillLessonModal
+        isOpen={isSkillLessonModalOpen}
+        onClose={() => setIsSkillLessonModalOpen(false)}
+        onSave={handleSaveSkillLesson}
+        modules={modules}
+        lessons={lessons}
+        learningPaths={learningPaths}
+      />
 
       <DeleteConfirmModal 
         isOpen={isDeleteModalOpen}

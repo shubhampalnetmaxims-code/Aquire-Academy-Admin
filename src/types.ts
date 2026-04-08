@@ -26,6 +26,15 @@ export interface Lesson {
   thumbnail: string;
   chapters: Chapter[];
   createdAt: string;
+  isSkillLesson?: boolean;
+  learningPathId?: string;
+  starNumber?: number;
+}
+
+export interface PathStarData {
+  star: number;
+  mainLessonId: string | null;
+  skillLessonIds: string[];
 }
 
 export interface LearningPath {
@@ -35,6 +44,7 @@ export interface LearningPath {
   moduleId: string;
   stars: number;
   starLessons: (string | null)[];
+  starsData?: PathStarData[];
   createdAt: string;
 }
 

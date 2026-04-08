@@ -139,7 +139,15 @@ export default function LearningPathModal({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 1000));
-    onSave({ name, description, moduleId, stars, starLessons });
+    
+    // Initialize starsData if it doesn't exist
+    const starsData = editingPath?.starsData || starLessons.map((lessonId, index) => ({
+      star: index + 1,
+      mainLessonId: lessonId,
+      skillLessonIds: []
+    }));
+
+    onSave({ name, description, moduleId, stars, starLessons, starsData });
     setIsSubmitting(false);
     onClose();
   };

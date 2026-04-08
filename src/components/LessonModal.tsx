@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Save, AlertCircle, Loader2, Upload, Image as ImageIcon, ChevronDown } from "lucide-react";
 import RichTextEditor from "./RichTextEditor";
-import { Module, Lesson } from "../types";
+import { Module, Lesson, LearningPath } from "../types";
 
 interface LessonModalProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ interface LessonModalProps {
   onSave: (lesson: Omit<Lesson, "id" | "chapters" | "createdAt">) => void;
   editingLesson: Lesson | null;
   modules: Module[];
+  learningPaths: LearningPath[];
 }
 
 const SAMPLE_THUMBNAILS = [
@@ -20,11 +21,13 @@ const SAMPLE_THUMBNAILS = [
   "https://picsum.photos/seed/edu5/400/300",
 ];
 
-export default function LessonModal({ isOpen, onClose, onSave, editingLesson, modules }: LessonModalProps) {
+export default function LessonModal({ isOpen, onClose, onSave, editingLesson, modules, learningPaths }: LessonModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [moduleId, setModuleId] = useState("");
   const [thumbnail, setThumbnail] = useState(SAMPLE_THUMBNAILS[0]);
+  const [isSkillLesson, setIsSkillLesson] = useState(false);
+  const [learningPathId, setLearningPathId] = useState("");
   const [errors, setErrors] = useState<{ name?: string; description?: string; moduleId?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,11 +38,15 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
       setDescription(editingLesson.description);
       setModuleId(editingLesson.moduleId);
       setThumbnail(editingLesson.thumbnail);
+      setIsSkillLesson(editingLesson.isSkillLesson || false);
+      setLearningPathId(editingLesson.learningPathId || "");
     } else {
       setName("");
       setDescription("");
       setModuleId(modules[0]?.id || "");
       setThumbnail(SAMPLE_THUMBNAILS[0]);
+      setIsSkillLesson(false);
+      setLearningPathId("");
     }
     setErrors({});
   }, [editingLesson, isOpen, modules]);
@@ -47,7 +54,7 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
   const validate = () => {
     const newErrors: { name?: string; description?: string; moduleId?: string } = {};
     if (!name.trim()) newErrors.name = "Lesson name is required";
-    if (!description.trim()) newErrors.description = "Description is required";
+    if (!isSkillLesson && !description.trim()) newErrors.description = "Description is required";
     if (!moduleId) newErrors.moduleId = "Please select a module";
     
     setErrors(newErrors);
@@ -72,7 +79,14 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
     setIsSubmitting(true);
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    onSave({ name, description, moduleId, thumbnail });
+    onSave({ 
+      name, 
+      description, 
+      moduleId, 
+      thumbnail,
+      isSkillLesson,
+      learningPathId: isSkillLesson ? learningPathId : undefined
+    });
     setIsSubmitting(false);
     onClose();
   };
@@ -203,21 +217,72 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-aquire-grey-dark ml-1">
-                  Description
-                </label>
-                <RichTextEditor
-                  value={description}
-                  onChange={setDescription}
-                  placeholder="What will students learn in this lesson?"
-                />
-                {errors.description && (
-                  <p className="text-red-500 text-xs flex items-center gap-1 mt-1 ml-1">
-                    <AlertCircle size={12} /> {errors.description}
-                  </p>
+              {/* Advanced Section */}
+              <div className="p-6 bg-aquire-grey-light/30 rounded-[24px] border border-aquire-border space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-aquire-black">Advanced Settings</h4>
+                    <p className="text-[10px] text-aquire-grey-med uppercase tracking-wider font-bold">Skill-Based Learning Path Integration</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={isSkillLesson}
+                      onChange={(e) => setIsSkillLesson(e.target.checked)}
+                    />
+                    <div className="w-11 h-6 bg-aquire-grey-med peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-aquire-primary"></div>
+                    <span className="ml-3 text-xs font-bold text-aquire-grey-dark">Skill Lesson</span>
+                  </label>
+                </div>
+
+                {isSkillLesson && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="pt-4 border-t border-aquire-border"
+                  >
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-aquire-grey-dark ml-1">
+                        Select Learning Path
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={learningPathId}
+                          onChange={(e) => setLearningPathId(e.target.value)}
+                          className="w-full px-5 py-3 rounded-xl input-field appearance-none cursor-pointer text-sm"
+                        >
+                          <option value="">Select a path...</option>
+                          {learningPaths.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-4 h-4 pointer-events-none" />
+                      </div>
+                    </div>
+                  </motion.div>
                 )}
               </div>
+
+              {!isSkillLesson && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-bold text-aquire-grey-dark ml-1">
+                    Description
+                  </label>
+                  <RichTextEditor
+                    value={description}
+                    onChange={setDescription}
+                    placeholder="What will students learn in this lesson?"
+                  />
+                  {errors.description && (
+                    <p className="text-red-500 text-xs flex items-center gap-1 mt-1 ml-1">
+                      <AlertCircle size={12} /> {errors.description}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="flex gap-4 pt-4">
                 <button
