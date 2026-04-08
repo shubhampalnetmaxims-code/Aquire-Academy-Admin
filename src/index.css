@@ -59,6 +59,10 @@
   .sidebar-item-active {
     @apply bg-aquire-primary text-white shadow-lg shadow-aquire-primary/20;
   }
+
+  .question-block {
+    @apply mb-6 p-6 bg-white/85 backdrop-blur-md rounded-[12px] shadow-[0_4px_20px_rgba(0,0,0,0.08)] border-l-4 border-aquire-primary hover:-translate-y-1 transition-all duration-300;
+  }
 }
 
 .custom-scrollbar::-webkit-scrollbar {

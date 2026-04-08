@@ -37,3 +37,26 @@ export interface LearningPath {
   starLessons: (string | null)[];
   createdAt: string;
 }
+
+export interface QuestionBankItem {
+  id: string;
+  type: 'mcq' | 'true_false' | 'fill_blanks' | 'short_answer' | 'long_text' | 'section';
+  question: string;
+  description?: string;
+  options?: any[];
+  correctAnswer?: any;
+  answers?: string[];
+  expectedAnswer?: string;
+  keywords?: string;
+  marks: number;
+  required: boolean;
+  image?: string;
+}
+
+export interface QuestionBank {
+  id: string;
+  name: string;
+  description: string;
+  questions: QuestionBankItem[];
+  createdAt: string;
+}

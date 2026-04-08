@@ -26,17 +26,25 @@ import {
   GraduationCap,
   Eye,
   Layers,
-  Star
+  Star,
+  Database,
+  ClipboardList,
+  Copy,
+  FileJson,
+  Download,
+  Upload
 } from "lucide-react";
 import ModuleModal from "./ModuleModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import LessonModal from "./LessonModal";
-import { Module, Lesson, Chapter, ContentBlock, LearningPath } from "../types";
+import { Module, Lesson, Chapter, ContentBlock, LearningPath, QuestionBank } from "../types";
 import ChapterModal from "./ChapterModal";
 import ChapterEditor from "./ChapterEditor";
 import StudentPreview from "./StudentPreview";
 import LearningPathModal from "./LearningPathModal";
 import LearningPathPreview from "./LearningPathPreview";
+import QuestionBankModal from "./QuestionBankModal";
+import QuestionBankPreview from "./QuestionBankPreview";
 
 interface DashboardContentProps {
   activeTab: string;
@@ -59,7 +67,7 @@ const generateLessons = (): Lesson[] => {
       lessonNames: [
         "Introduction to Story Writing", "Characters and Setting", "Plot Development", 
         "Beginning, Middle, End", "Creative Story Writing", "Writing Short Stories", 
-        "Adding Emotions", "Dialogue Writing"
+        "Adding Emotions", "Dialogue Writing", "Seed Data Test"
       ]
     },
     { 
@@ -243,11 +251,79 @@ const generateLessons = (): Lesson[] => {
       const lessonId = `l-${mod.id}-${lessonIdx + 1}`;
       const chapters: Chapter[] = [];
       
-      chapterTypes.forEach((type, cIdx) => {
-        const chapterId = `c-${lessonId}-${cIdx + 1}`;
-        const { name, blocks } = getChapterData(type, mod.name, lessonName, cIdx);
-        chapters.push({ id: chapterId, name, content: "", blocks });
-      });
+      if (lessonName === "Seed Data Test") {
+        chapters.push({
+          id: `c-${lessonId}-mixed`,
+          name: "Mixed Question Types Test",
+          content: "",
+          blocks: [
+            {
+              id: `b-mcq-seed`,
+              type: 'mcq' as const,
+              data: {
+                question: "Which of the following is a key element of a story's setting?",
+                options: [
+                  { text: "Time and place", isCorrect: true },
+                  { text: "The main character's name", isCorrect: false },
+                  { text: "The number of pages", isCorrect: false },
+                  { text: "The author's biography", isCorrect: false }
+                ],
+                marks: 5
+              }
+            },
+            {
+              id: `b-lt-seed`,
+              type: 'long_text' as const,
+              data: {
+                question: "Describe a character who is brave but also very clumsy.",
+                description: "Think about how their clumsiness might affect their brave actions.",
+                expected_answer: "A brave but clumsy character might rush into danger to save someone, but trip over their own feet in the process. This adds a layer of relatability and humor to their heroism.",
+                keywords: "brave, clumsy, character, description",
+                marks: 15
+              }
+            },
+            {
+              id: `b-fb-seed`,
+              type: 'fill_blanks' as const,
+              data: {
+                text: "A [blank] is used to separate items in a list, while a [blank] is used at the end of a sentence.",
+                answers: ["comma", "full stop"],
+                options: [
+                  ["comma", "colon", "dash"],
+                  ["full stop", "question mark", "exclamation mark"]
+                ],
+                marks: 5
+              }
+            },
+            {
+              id: `b-sa-seed`,
+              type: 'short_answer' as const,
+              data: {
+                questions: [
+                  { q: "What is the 'climax' of a story?", a: "The most intense or exciting point of the story." },
+                  { q: "What follows the climax in a standard plot structure?", a: "Falling action" }
+                ],
+                marks: 10
+              }
+            },
+            {
+              id: `b-tf-seed`,
+              type: 'true_false' as const,
+              data: {
+                statement: "Using 'repetition' is a common persuasive technique to emphasize a point.",
+                isTrue: true,
+                marks: 5
+              }
+            }
+          ]
+        });
+      } else {
+        chapterTypes.forEach((type, cIdx) => {
+          const chapterId = `c-${lessonId}-${cIdx + 1}`;
+          const { name, blocks } = getChapterData(type, mod.name, lessonName, cIdx);
+          chapters.push({ id: chapterId, name, content: "", blocks });
+        });
+      }
 
       lessons.push({
         id: lessonId,
@@ -266,11 +342,82 @@ const generateLessons = (): Lesson[] => {
 
 const INITIAL_LESSONS: Lesson[] = generateLessons();
 
+const INITIAL_QUESTION_BANKS: QuestionBank[] = [
+  {
+    id: "qb1",
+    name: "Writing Skills Assessment",
+    description: "A comprehensive test covering various aspects of narrative and persuasive writing.",
+    createdAt: new Date().toISOString(),
+    questions: [
+      {
+        id: "q1",
+        type: "mcq",
+        question: "What is the main purpose of the 'climax' in a story?",
+        options: [
+          { text: "To introduce the characters", isCorrect: false },
+          { text: "To provide the resolution", isCorrect: false },
+          { text: "To reach the point of highest tension", isCorrect: true },
+          { text: "To describe the setting", isCorrect: false }
+        ],
+        marks: 5,
+        required: true
+      },
+      {
+        id: "q2",
+        type: "true_false",
+        question: "Persuasive writing should always include a counter-argument.",
+        correctAnswer: true,
+        marks: 5,
+        required: true
+      },
+      {
+        id: "q3",
+        type: "fill_blanks",
+        question: "A [blank] is used to separate items in a list, while a [blank] is used at the end of a sentence.",
+        answers: ["comma", "full stop"],
+        marks: 5,
+        required: true
+      },
+      {
+        id: "q4",
+        type: "short_answer",
+        question: "What is 'alliteration'?",
+        expectedAnswer: "The repetition of the same letter or sound at the beginning of adjacent or closely connected words.",
+        marks: 10,
+        required: true
+      },
+      {
+        id: "q5",
+        type: "long_text",
+        question: "Write a short narrative about a time you felt brave.",
+        description: "Focus on using descriptive language and showing emotions.",
+        expectedAnswer: "The student should describe a specific situation, their internal feelings of fear, and the action they took to overcome it.",
+        keywords: "brave, fear, courage, narrative, emotions",
+        marks: 20,
+        required: true
+      }
+    ]
+  },
+  {
+    id: "qb2",
+    name: "Punctuation Mastery Test",
+    description: "Test your knowledge of essential punctuation rules.",
+    createdAt: new Date().toISOString(),
+    questions: [
+      { id: "p1", type: "section", question: "Basic Punctuation", marks: 0, required: false },
+      { id: "p2", type: "mcq", question: "Which mark is used to end a question?", options: [{text: "?", isCorrect: true}, {text: "!", isCorrect: false}], marks: 2, required: true },
+      { id: "p3", type: "section", question: "Advanced Punctuation", marks: 0, required: false },
+      { id: "p4", type: "true_false", question: "Semicolons can join two independent clauses.", correctAnswer: true, marks: 5, required: true }
+    ]
+  }
+];
+
 export default function DashboardContent({ activeTab, showToast }: DashboardContentProps) {
   // Modules State
   const [modules, setModules] = useState<Module[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
+  const [questionBanks, setQuestionBanks] = useState<QuestionBank[]>([]);
   
   // UI State
   const [searchQuery, setSearchQuery] = useState("");
@@ -288,13 +435,15 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [isChapterModalOpen, setIsChapterModalOpen] = useState(false);
   const [isLearningPathModalOpen, setIsLearningPathModalOpen] = useState(false);
+  const [isQuestionBankModalOpen, setIsQuestionBankModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
   const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
   const [editingPath, setEditingPath] = useState<LearningPath | null>(null);
-  const [itemToDelete, setItemToDelete] = useState<{ id: string; type: "module" | "lesson" | "chapter" | "learning-path" } | null>(null);
+  const [editingBank, setEditingBank] = useState<QuestionBank | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; type: "module" | "lesson" | "chapter" | "learning-path" | "assessments" } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Preview State
@@ -303,19 +452,23 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   const [previewChapterIndex, setPreviewChapterIndex] = useState(0);
   const [isPathPreviewOpen, setIsPathPreviewOpen] = useState(false);
   const [previewPath, setPreviewPath] = useState<LearningPath | null>(null);
+  const [isBankPreviewOpen, setIsBankPreviewOpen] = useState(false);
+  const [previewBank, setPreviewBank] = useState<QuestionBank | null>(null);
 
   // Load data from localStorage
   useEffect(() => {
     const savedModules = localStorage.getItem("aquire_modules");
     const savedLessons = localStorage.getItem("aquire_lessons");
     const savedPaths = localStorage.getItem("aquire_learning_paths");
+    const savedBanks = localStorage.getItem("aquire_question_banks");
     
     // Check if we need to force update to the new writing curriculum
     let needsUpdate = true;
     try {
-      if (savedModules && savedLessons) {
+      if (savedModules && savedLessons && savedBanks) {
         const parsedModules = JSON.parse(savedModules);
         const parsedLessons = JSON.parse(savedLessons);
+        const parsedBanks = JSON.parse(savedBanks);
         if (Array.isArray(parsedModules) && parsedModules.length > 0 && parsedModules.some(m => m.name === "Narrative Writing")) {
           // Check if any lesson has a long_text block
           const hasLongText = parsedLessons.some((l: any) => 
@@ -323,7 +476,12 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
               c.blocks.some((b: any) => b.type === 'long_text')
             )
           );
-          if (hasLongText) {
+          // Check for Seed Data Test lesson
+          const hasSeedData = parsedLessons.some((l: any) => l.name === "Seed Data Test");
+          // Check for Question Banks
+          const hasBanks = Array.isArray(parsedBanks) && parsedBanks.length > 0;
+
+          if (hasLongText && hasSeedData && hasBanks) {
             needsUpdate = false;
           }
         }
@@ -336,13 +494,16 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
       setModules(INITIAL_MODULES);
       setLessons(INITIAL_LESSONS);
       setLearningPaths([]);
+      setQuestionBanks(INITIAL_QUESTION_BANKS);
       localStorage.setItem("aquire_modules", JSON.stringify(INITIAL_MODULES));
       localStorage.setItem("aquire_lessons", JSON.stringify(INITIAL_LESSONS));
       localStorage.setItem("aquire_learning_paths", JSON.stringify([]));
+      localStorage.setItem("aquire_question_banks", JSON.stringify(INITIAL_QUESTION_BANKS));
     } else {
       setModules(JSON.parse(savedModules!));
       setLessons(JSON.parse(savedLessons!));
       if (savedPaths) setLearningPaths(JSON.parse(savedPaths));
+      if (savedBanks) setQuestionBanks(JSON.parse(savedBanks));
     }
   }, []);
 
@@ -360,6 +521,11 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   const saveLearningPaths = (updatedPaths: LearningPath[]) => {
     setLearningPaths(updatedPaths);
     localStorage.setItem("aquire_learning_paths", JSON.stringify(updatedPaths));
+  };
+
+  const saveQuestionBanks = (updatedBanks: QuestionBank[]) => {
+    setQuestionBanks(updatedBanks);
+    localStorage.setItem("aquire_question_banks", JSON.stringify(updatedBanks));
   };
 
   // CRUD Handlers - Modules
@@ -454,6 +620,10 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
       const updated = learningPaths.filter(p => p.id !== itemToDelete.id);
       saveLearningPaths(updated);
       showToast("Learning Path deleted successfully!", "success");
+    } else if (itemToDelete.type === "assessments") {
+      const updated = questionBanks.filter(b => b.id !== itemToDelete.id);
+      saveQuestionBanks(updated);
+      showToast("Assessment deleted successfully!", "success");
     }
 
     setIsDeleting(false);
@@ -477,6 +647,24 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     }
     setIsLearningPathModalOpen(false);
     setEditingPath(null);
+  };
+
+  const handleSaveQuestionBank = (data: Omit<QuestionBank, "id" | "createdAt">) => {
+    if (editingBank) {
+      const updated = questionBanks.map(b => b.id === editingBank.id ? { ...b, ...data } : b);
+      saveQuestionBanks(updated);
+      showToast("Question Bank updated successfully!", "success");
+    } else {
+      const newBank: QuestionBank = {
+        id: "qb" + Math.random().toString(36).substr(2, 9),
+        ...data,
+        createdAt: new Date().toISOString(),
+      };
+      saveQuestionBanks([newBank, ...questionBanks]);
+      showToast("Question Bank created successfully!", "success");
+    }
+    setIsQuestionBankModalOpen(false);
+    setEditingBank(null);
   };
 
   // Filtering & Sorting
@@ -1405,6 +1593,132 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     );
   };
 
+  const renderAssessments = () => {
+    const filteredBanks = questionBanks.filter(b => 
+      b.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-8"
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-aquire-border">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-aquire-grey-med" size={20} />
+            <input 
+              type="text" 
+              placeholder="Search assessments..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-aquire-grey-light border border-aquire-border rounded-2xl focus:outline-none focus:border-aquire-primary transition-all"
+            />
+          </div>
+          <button 
+            onClick={() => {
+              setEditingBank(null);
+              setIsQuestionBankModalOpen(true);
+            }}
+            className="flex items-center justify-center gap-2 px-8 py-3 bg-aquire-primary text-white rounded-2xl font-bold hover:shadow-lg hover:shadow-aquire-primary/20 transition-all group"
+          >
+            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+            Create Assessment
+          </button>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-sm border border-aquire-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-aquire-border text-aquire-grey-med text-[10px] uppercase tracking-[0.2em] font-bold">
+                  <th className="px-6 py-4">Assessment Details</th>
+                  <th className="px-6 py-4">Questions</th>
+                  <th className="px-6 py-4">Total Marks</th>
+                  <th className="px-6 py-4">Created At</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                <AnimatePresence mode="popLayout">
+                  {filteredBanks.map((bank) => (
+                    <motion.tr 
+                      key={bank.id}
+                      layout
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="border-b border-aquire-border hover:bg-aquire-grey-light transition-colors group"
+                    >
+                      <td className="px-6 py-4">
+                        <div>
+                          <h4 className="text-aquire-text-heading font-bold">{bank.name}</h4>
+                          <p className="text-aquire-grey-med text-xs line-clamp-1">{bank.description}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-3 py-1 rounded-full bg-blue-50 text-aquire-primary text-[10px] font-bold uppercase tracking-widest border border-blue-100">
+                          {bank.questions.filter(q => q.type !== 'section').length} Questions
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-aquire-text-heading">
+                          {bank.questions.reduce((acc, q) => acc + (q.marks || 0), 0)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-aquire-grey-med text-xs">
+                        {new Date(bank.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => {
+                              setPreviewBank(bank);
+                              setIsBankPreviewOpen(true);
+                            }}
+                            className="p-3 bg-white border border-aquire-border rounded-xl text-aquire-grey-med hover:text-aquire-primary hover:border-aquire-primary transition-all"
+                            title="Preview Student View"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setEditingBank(bank);
+                              setIsQuestionBankModalOpen(true);
+                            }}
+                            className="p-3 bg-aquire-grey-light rounded-xl text-aquire-grey-med hover:text-aquire-primary hover:bg-aquire-primary/10 transition-all"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setItemToDelete({ id: bank.id, type: "assessments" });
+                              setIsDeleteModalOpen(true);
+                            }}
+                            className="p-3 bg-aquire-grey-light rounded-xl text-aquire-grey-med hover:text-red-500 hover:bg-red-50 transition-all"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+                {filteredBanks.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-20 text-center text-aquire-grey-med">
+                      No assessments found. Create your first one to get started!
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
   const renderPagination = () => {
     if (totalPages <= 1) return null;
     return (
@@ -1447,12 +1761,17 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     );
   };
 
+  const formatTabName = (tab: string) => {
+    if (tab === "dashboard") return "Dashboard Overview";
+    return tab.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
   const renderPlaceholder = () => (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="w-20 h-20 bg-aquire-primary/10 rounded-3xl flex items-center justify-center mb-6 border border-aquire-primary/20">
         <LayoutDashboard className="text-aquire-primary w-10 h-10" />
       </div>
-      <h2 className="text-2xl font-bold text-aquire-black mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Section</h2>
+      <h2 className="text-2xl font-bold text-aquire-black mb-2">{formatTabName(activeTab)} Section</h2>
       <p className="text-aquire-grey-med max-w-sm">This section is currently under development. Please check back later for updates.</p>
     </div>
   );
@@ -1461,7 +1780,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     <div className="p-6 md:p-10">
       <header className="mb-10">
         <h1 className="text-4xl font-bold text-aquire-black tracking-tight">
-          {activeTab === "dashboard" ? "Dashboard Overview" : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+          {formatTabName(activeTab)}
         </h1>
         <p className="text-aquire-grey-med mt-1">Welcome back, Admin. Here's what's happening today.</p>
       </header>
@@ -1470,7 +1789,8 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
       {activeTab === "modules" && renderModules()}
       {activeTab === "lessons" && renderLessons()}
       {activeTab === "learning-paths" && renderLearningPaths()}
-      {activeTab !== "dashboard" && activeTab !== "modules" && activeTab !== "lessons" && activeTab !== "learning-paths" && renderPlaceholder()}
+      {activeTab === "assessments" && renderAssessments()}
+      {activeTab !== "dashboard" && activeTab !== "modules" && activeTab !== "lessons" && activeTab !== "learning-paths" && activeTab !== "assessments" && renderPlaceholder()}
 
       {/* Modals */}
       <ModuleModal 
@@ -1516,6 +1836,16 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
         lessons={lessons}
       />
 
+      <QuestionBankModal
+        isOpen={isQuestionBankModalOpen}
+        onClose={() => {
+          setIsQuestionBankModalOpen(false);
+          setEditingBank(null);
+        }}
+        onSave={handleSaveQuestionBank}
+        editingBank={editingBank}
+      />
+
       {isPathPreviewOpen && previewPath && (
         <LearningPathPreview
           path={previewPath}
@@ -1523,6 +1853,16 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
           onClose={() => {
             setIsPathPreviewOpen(false);
             setPreviewPath(null);
+          }}
+        />
+      )}
+
+      {isBankPreviewOpen && previewBank && (
+        <QuestionBankPreview
+          bank={previewBank}
+          onClose={() => {
+            setIsBankPreviewOpen(false);
+            setPreviewBank(null);
           }}
         />
       )}

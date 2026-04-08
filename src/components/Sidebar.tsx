@@ -5,16 +5,18 @@ import {
   BookOpen, 
   Layers, 
   Trophy, 
-  FileText, 
-  Video, 
-  Image as ImageIcon, 
   ChevronDown, 
   LogOut, 
   User,
   LayoutDashboard,
   Menu,
   X,
-  Book
+  Book,
+  Users,
+  UserCheck,
+  Home,
+  ClipboardList,
+  Database
 } from "lucide-react";
 
 interface SidebarProps {
@@ -27,7 +29,7 @@ interface MenuItem {
   id: string;
   label: string;
   icon: React.ReactNode;
-  submenu?: { id: string; label: string; icon: React.ReactNode }[];
+  submenu?: MenuItem[];
 }
 
 export default function Sidebar({ onLogout, activeTab, setActiveTab }: SidebarProps) {
@@ -45,15 +47,18 @@ export default function Sidebar({ onLogout, activeTab, setActiveTab }: SidebarPr
         { id: "lessons", label: "Lessons", icon: <BookOpen size={18} /> },
         { id: "learning-paths", label: "Learning Paths", icon: <Book size={18} /> },
         { id: "skills", label: "Skill-Based Lessons", icon: <Trophy size={18} /> },
+        { id: "assessments", label: "Assessments", icon: <ClipboardList size={18} /> },
       ]
     },
     { 
-      id: "content", 
-      label: "Content", 
-      icon: <FileText size={20} />,
+      id: "users", 
+      label: "Users", 
+      icon: <Users size={20} />,
       submenu: [
-        { id: "videos", label: "Video Lectures", icon: <Video size={18} /> },
-        { id: "logos", label: "Logo Options", icon: <ImageIcon size={18} /> },
+        { id: "students", label: "Students", icon: <User size={18} /> },
+        { id: "teachers", label: "Teachers", icon: <UserCheck size={18} /> },
+        { id: "parents", label: "Parents", icon: <Users size={18} /> },
+        { id: "home-learner", label: "Home learner", icon: <Home size={18} /> },
       ]
     },
   ];
@@ -86,7 +91,7 @@ export default function Sidebar({ onLogout, activeTab, setActiveTab }: SidebarPr
             <button
               onClick={() => item.submenu ? toggleMenu(item.id) : setActiveTab(item.id)}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 group ${
-                activeTab === item.id || (item.submenu && item.submenu.some(s => s.id === activeTab))
+                activeTab === item.id || (item.submenu && (item.submenu.some(s => s.id === activeTab) || item.submenu.some(s => s.submenu && s.submenu.some(ss => ss.id === activeTab))))
                   ? "bg-aquire-primary text-white shadow-lg shadow-aquire-primary/20"
                   : "text-[#E2E8F0] hover:bg-[#1E293B] hover:text-white"
               }`}
@@ -117,18 +122,48 @@ export default function Sidebar({ onLogout, activeTab, setActiveTab }: SidebarPr
                   className="overflow-hidden pl-4 space-y-1"
                 >
                   {item.submenu.map((sub) => (
-                    <button
-                      key={sub.id}
-                      onClick={() => setActiveTab(sub.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-300 ${
-                        activeTab === sub.id
-                          ? "text-white bg-aquire-primary shadow-md shadow-aquire-primary/10 font-bold"
-                          : "text-white/40 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      <span className={`${activeTab === sub.id ? "text-white" : "opacity-70"}`}>{sub.icon}</span>
-                      {sub.label}
-                    </button>
+                    <div key={sub.id} className="space-y-1">
+                      <button
+                        onClick={() => sub.submenu ? toggleMenu(sub.id) : setActiveTab(sub.id)}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm transition-all duration-300 ${
+                          activeTab === sub.id || (sub.submenu && sub.submenu.some(ss => ss.id === activeTab))
+                            ? "text-white bg-aquire-primary shadow-md shadow-aquire-primary/10 font-bold"
+                            : "text-white/40 hover:text-white hover:bg-white/5"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`${activeTab === sub.id || (sub.submenu && sub.submenu.some(ss => ss.id === activeTab)) ? "text-white" : "opacity-70"}`}>{sub.icon}</span>
+                          {sub.label}
+                        </div>
+                        {sub.submenu && (
+                          <motion.div
+                            animate={{ rotate: expandedMenus.includes(sub.id) ? 180 : 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <ChevronDown size={14} className="opacity-50" />
+                          </motion.div>
+                        )}
+                      </button>
+
+                      {sub.submenu && expandedMenus.includes(sub.id) && (
+                        <div className="pl-6 space-y-1">
+                          {sub.submenu.map((ss) => (
+                            <button
+                              key={ss.id}
+                              onClick={() => setActiveTab(ss.id)}
+                              className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-xs transition-all duration-300 ${
+                                activeTab === ss.id
+                                  ? "text-white bg-aquire-primary/20 font-bold"
+                                  : "text-white/30 hover:text-white hover:bg-white/5"
+                              }`}
+                            >
+                              <span>{ss.icon}</span>
+                              {ss.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </motion.div>
               )}
