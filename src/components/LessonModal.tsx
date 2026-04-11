@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Save, AlertCircle, Loader2, Upload, Image as ImageIcon, ChevronDown } from "lucide-react";
 import RichTextEditor from "./RichTextEditor";
-import { Module, Lesson, LearningPath } from "../types";
+import { Module, Lesson, LearningPath, Grade } from "../types";
 
 interface LessonModalProps {
   isOpen: boolean;
@@ -11,6 +11,7 @@ interface LessonModalProps {
   editingLesson: Lesson | null;
   modules: Module[];
   learningPaths: LearningPath[];
+  grades: Grade[];
 }
 
 const SAMPLE_THUMBNAILS = [
@@ -21,29 +22,41 @@ const SAMPLE_THUMBNAILS = [
   "https://picsum.photos/seed/edu5/400/300",
 ];
 
-export default function LessonModal({ isOpen, onClose, onSave, editingLesson, modules, learningPaths }: LessonModalProps) {
+export default function LessonModal({ isOpen, onClose, onSave, editingLesson, modules, learningPaths, grades }: LessonModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [moduleId, setModuleId] = useState("");
+  const [gradeId, setGradeId] = useState("");
   const [thumbnail, setThumbnail] = useState(SAMPLE_THUMBNAILS[0]);
   const [isSkillLesson, setIsSkillLesson] = useState(false);
   const [learningPathId, setLearningPathId] = useState("");
-  const [errors, setErrors] = useState<{ name?: string; description?: string; moduleId?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; description?: string; moduleId?: string; gradeId?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Get grades for the selected module
+  const moduleGrades = modules.find(m => m.id === moduleId)?.gradeIds || [];
+  const filteredGrades = grades.filter(g => moduleGrades.includes(g.id));
 
   useEffect(() => {
     if (editingLesson) {
       setName(editingLesson.name);
       setDescription(editingLesson.description);
       setModuleId(editingLesson.moduleId);
+      setGradeId(editingLesson.gradeId);
       setThumbnail(editingLesson.thumbnail);
       setIsSkillLesson(editingLesson.isSkillLesson || false);
       setLearningPathId(editingLesson.learningPathId || "");
     } else {
       setName("");
       setDescription("");
-      setModuleId(modules[0]?.id || "");
+      const firstMod = modules[0]?.id || "";
+      setModuleId(firstMod);
+      
+      // Auto-select first grade from module
+      const firstModGrades = modules.find(m => m.id === firstMod)?.gradeIds || [];
+      setGradeId(firstModGrades[0] || "");
+      
       setThumbnail(SAMPLE_THUMBNAILS[0]);
       setIsSkillLesson(false);
       setLearningPathId("");
@@ -51,11 +64,22 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
     setErrors({});
   }, [editingLesson, isOpen, modules]);
 
+  // When moduleId changes, update gradeId if current one is not in new module's grades
+  useEffect(() => {
+    if (!editingLesson && moduleId) {
+      const currentModGrades = modules.find(m => m.id === moduleId)?.gradeIds || [];
+      if (!currentModGrades.includes(gradeId)) {
+        setGradeId(currentModGrades[0] || "");
+      }
+    }
+  }, [moduleId, modules]);
+
   const validate = () => {
-    const newErrors: { name?: string; description?: string; moduleId?: string } = {};
+    const newErrors: { name?: string; description?: string; moduleId?: string; gradeId?: string } = {};
     if (!name.trim()) newErrors.name = "Lesson name is required";
     if (!isSkillLesson && !description.trim()) newErrors.description = "Description is required";
     if (!moduleId) newErrors.moduleId = "Please select a module";
+    if (!gradeId) newErrors.gradeId = "Please select a grade";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -83,6 +107,7 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
       name, 
       description, 
       moduleId, 
+      gradeId,
       thumbnail,
       isSkillLesson,
       learningPathId: isSkillLesson ? learningPathId : undefined
@@ -107,7 +132,7 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-[32px] p-8 md:p-10 shadow-2xl border border-aquire-border my-8"
+            className="relative w-full max-w-2xl bg-white rounded-[32px] p-8 md:p-10 shadow-2xl border border-aquire-border my-auto"
           >
             <button 
               onClick={onClose}
@@ -130,7 +155,7 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <label className="block text-sm font-bold text-aquire-grey-dark ml-1">
-                      Link to Module
+                      Step 1: Select Module
                     </label>
                     <div className="relative">
                       <select
@@ -138,6 +163,7 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
                         onChange={(e) => setModuleId(e.target.value)}
                         className="w-full px-6 py-4 rounded-2xl input-field appearance-none cursor-pointer"
                       >
+                        <option value="">Select Module...</option>
                         {modules.map(m => (
                           <option key={m.id} value={m.id}>
                             {m.name}
@@ -149,6 +175,33 @@ export default function LessonModal({ isOpen, onClose, onSave, editingLesson, mo
                     {errors.moduleId && (
                       <p className="text-red-500 text-xs flex items-center gap-1 mt-1 ml-1">
                         <AlertCircle size={12} /> {errors.moduleId}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-aquire-grey-dark ml-1">
+                      Step 2: Assign Grade
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={gradeId}
+                        onChange={(e) => setGradeId(e.target.value)}
+                        disabled={!moduleId}
+                        className="w-full px-6 py-4 rounded-2xl input-field appearance-none cursor-pointer disabled:opacity-50 disabled:bg-aquire-grey-light"
+                      >
+                        <option value="">{moduleId ? "Select Grade..." : "Select module first"}</option>
+                        {filteredGrades.map(g => (
+                          <option key={g.id} value={g.id}>
+                            {g.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-4 h-4 pointer-events-none" />
+                    </div>
+                    {errors.gradeId && (
+                      <p className="text-red-500 text-xs flex items-center gap-1 mt-1 ml-1">
+                        <AlertCircle size={12} /> {errors.gradeId}
                       </p>
                     )}
                   </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   GraduationCap, 
@@ -16,13 +16,21 @@ import {
   UserCheck,
   Home,
   ClipboardList,
-  Database
+  Database,
+  Building2,
+  Settings,
+  TrendingUp
 } from "lucide-react";
+import { Organization } from "../types";
 
 interface SidebarProps {
   onLogout: () => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  userRole?: 'admin' | 'teacher';
+  impersonating?: boolean;
+  currentUser?: any;
+  onBackToAdmin?: () => void;
 }
 
 interface MenuItem {
@@ -32,9 +40,36 @@ interface MenuItem {
   submenu?: MenuItem[];
 }
 
-export default function Sidebar({ onLogout, activeTab, setActiveTab }: SidebarProps) {
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(["academic"]);
+export default function Sidebar({ 
+  onLogout, 
+  activeTab, 
+  setActiveTab, 
+  userRole = 'admin', 
+  impersonating = false,
+  currentUser,
+  onBackToAdmin
+}: SidebarProps) {
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(["academic", "organization", "teacher-modules", "teacher-students"]);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [organization, setOrganization] = useState<Organization | null>(null);
+
+  useEffect(() => {
+    const loadOrg = () => {
+      const savedOrg = localStorage.getItem("aquire_organization");
+      if (savedOrg) {
+        setOrganization(JSON.parse(savedOrg));
+      }
+    };
+
+    loadOrg();
+
+    const handleOrgUpdate = () => {
+      loadOrg();
+    };
+
+    document.addEventListener('organization-updated', handleOrgUpdate);
+    return () => document.removeEventListener('organization-updated', handleOrgUpdate);
+  }, []);
 
   const menuItems: MenuItem[] = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
@@ -51,17 +86,50 @@ export default function Sidebar({ onLogout, activeTab, setActiveTab }: SidebarPr
       ]
     },
     { 
-      id: "users", 
-      label: "Users", 
-      icon: <Users size={20} />,
+      id: "organization", 
+      label: "Organization", 
+      icon: <Building2 size={20} />,
       submenu: [
-        { id: "students", label: "Students", icon: <User size={18} /> },
+        { id: "manage-school", label: "Manage School", icon: <Settings size={18} /> },
         { id: "teachers", label: "Teachers", icon: <UserCheck size={18} /> },
-        { id: "parents", label: "Parents", icon: <Users size={18} /> },
+        { id: "students", label: "Students", icon: <User size={18} /> },
         { id: "home-learner", label: "Home learner", icon: <Home size={18} /> },
       ]
     },
   ];
+
+  const teacherMenuItems: MenuItem[] = [
+    { id: "dashboard", label: "Home / Dashboard", icon: <Home size={20} /> },
+    { 
+      id: "teacher-modules", 
+      label: "Modules", 
+      icon: <Layers size={20} />,
+      submenu: [
+        { id: "modules", label: "View Modules", icon: <Layers size={18} /> },
+        { id: "lessons", label: "Manage Lessons", icon: <BookOpen size={18} /> },
+      ]
+    },
+    { 
+      id: "teacher-students", 
+      label: "Students", 
+      icon: <Users size={20} />,
+      submenu: [
+        { id: "students", label: "Student List", icon: <User size={18} /> },
+        { id: "progress", label: "Progress Tracking", icon: <TrendingUp size={18} /> },
+        { id: "assignments", label: "Assignments", icon: <ClipboardList size={18} /> },
+      ]
+    },
+    { 
+      id: "teacher-settings", 
+      label: "Settings", 
+      icon: <Settings size={20} />,
+      submenu: [
+        { id: "account", label: "Account (Profile/Password)", icon: <User size={18} /> },
+      ]
+    },
+  ];
+
+  const currentMenuItems = userRole === 'teacher' ? teacherMenuItems : menuItems;
 
   const toggleMenu = (id: string) => {
     setExpandedMenus(prev => 
@@ -70,34 +138,42 @@ export default function Sidebar({ onLogout, activeTab, setActiveTab }: SidebarPr
   };
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full py-8 bg-aquire-black">
+    <div className={`flex flex-col h-full ${userRole === 'teacher' ? 'sidebar-teacher' : 'bg-aquire-black py-8'}`}>
       {/* Logo Section */}
       <div className="px-6 mb-10 flex items-center gap-3">
-        <div className="w-10 h-10 bg-aquire-primary/20 rounded-xl flex items-center justify-center border border-aquire-primary/30">
-          <GraduationCap className="text-aquire-primary w-6 h-6" />
+        <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 overflow-hidden">
+          {organization?.logo ? (
+            <img src={organization.logo} alt="Logo" className="w-full h-full object-contain p-1" />
+          ) : (
+            <GraduationCap className="text-aquire-primary w-6 h-6" />
+          )}
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-white leading-tight">
-            Aquire <span className="text-aquire-primary">Admin</span>
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold text-white leading-tight truncate">
+            {organization?.name || "Aquire Academy"}
           </h1>
-          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Academy Panel</p>
+          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">
+            {userRole === 'teacher' ? 'Teacher Portal' : 'Admin Panel'}
+          </p>
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
-        {menuItems.map((item) => (
+        {currentMenuItems.map((item) => (
           <div key={item.id} className="space-y-1">
             <button
               onClick={() => item.submenu ? toggleMenu(item.id) : setActiveTab(item.id)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 group ${
-                activeTab === item.id || (item.submenu && (item.submenu.some(s => s.id === activeTab) || item.submenu.some(s => s.submenu && s.submenu.some(ss => ss.id === activeTab))))
-                  ? "bg-aquire-primary text-white shadow-lg shadow-aquire-primary/20"
-                  : "text-[#E2E8F0] hover:bg-[#1E293B] hover:text-white"
+              className={`w-full transition-all duration-300 group ${
+                userRole === 'teacher' 
+                  ? `teacher-nav-item ${activeTab === item.id || (item.submenu && (item.submenu.some(s => s.id === activeTab) || item.submenu.some(s => s.submenu && s.submenu.some(ss => ss.id === activeTab)))) ? 'active' : ''}`
+                  : `flex items-center justify-between px-4 py-3 rounded-xl ${activeTab === item.id || (item.submenu && (item.submenu.some(s => s.id === activeTab) || item.submenu.some(s => s.submenu && s.submenu.some(ss => ss.id === activeTab)))) ? "bg-aquire-primary text-white shadow-lg shadow-aquire-primary/20" : "text-[#E2E8F0] hover:bg-[#1E293B] hover:text-white"}`
               }`}
             >
               <div className="flex items-center gap-3">
-                <span className={`${activeTab === item.id || (item.submenu && item.submenu.some(s => s.id === activeTab)) ? "text-white" : "group-hover:text-aquire-primary"} transition-colors`}>
+                <span className={`${activeTab === item.id || (item.submenu && item.submenu.some(s => s.id === activeTab)) 
+                  ? userRole === 'teacher' ? "text-blue-600" : "text-white" 
+                  : "group-hover:text-aquire-primary"} transition-colors`}>
                   {item.icon}
                 </span>
                 <span className="font-semibold text-sm">{item.label}</span>
@@ -127,7 +203,9 @@ export default function Sidebar({ onLogout, activeTab, setActiveTab }: SidebarPr
                         onClick={() => sub.submenu ? toggleMenu(sub.id) : setActiveTab(sub.id)}
                         className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm transition-all duration-300 ${
                           activeTab === sub.id || (sub.submenu && sub.submenu.some(ss => ss.id === activeTab))
-                            ? "text-white bg-aquire-primary shadow-md shadow-aquire-primary/10 font-bold"
+                            ? userRole === 'teacher'
+                              ? "text-blue-500 bg-blue-600/10 font-bold"
+                              : "text-white bg-aquire-primary shadow-md shadow-aquire-primary/10 font-bold"
                             : "text-white/40 hover:text-white hover:bg-white/5"
                         }`}
                       >
@@ -173,14 +251,32 @@ export default function Sidebar({ onLogout, activeTab, setActiveTab }: SidebarPr
       </nav>
 
       {/* User Profile & Logout */}
-      <div className="px-4 mt-auto pt-6 border-t border-white/5">
-        <div className="bg-white/5 rounded-2xl p-4 flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-aquire-primary flex items-center justify-center text-white font-bold border-2 border-white/10">
-            SP
+      <div className="px-4 mt-auto pt-6 border-t border-white/5 space-y-4">
+        {impersonating && onBackToAdmin && (
+          <button
+            onClick={onBackToAdmin}
+            className={`w-full flex items-center justify-center gap-2 transition-all duration-300 font-black text-xs uppercase tracking-widest ${
+              userRole === 'teacher' ? 'back-admin-btn' : 'py-3 rounded-xl bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/20'
+            }`}
+          >
+            <LogOut size={18} className="rotate-180" />
+            Back to Admin Panel
+          </button>
+        )}
+
+        <div className="bg-white/5 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-aquire-primary flex items-center justify-center text-white font-bold border-2 border-white/10 overflow-hidden">
+            {currentUser?.profile_pic ? (
+              <img src={currentUser.profile_pic} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              currentUser?.name?.charAt(0) || "SP"
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white truncate">Shubham Pal</p>
-            <p className="text-[10px] text-white/40 truncate">Super Admin</p>
+            <p className="text-sm font-bold text-white truncate">{currentUser?.name || "Shubham Pal"}</p>
+            <p className="text-[10px] text-white/40 truncate">
+              {userRole === 'teacher' ? 'Teacher' : 'Super Admin'}
+            </p>
           </div>
         </div>
         <button

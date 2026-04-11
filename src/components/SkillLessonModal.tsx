@@ -6,9 +6,10 @@ import {
   BookOpen, 
   Trophy, 
   Star,
-  CheckCircle2
+  CheckCircle2,
+  GraduationCap
 } from "lucide-react";
-import { Module, Lesson, LearningPath } from "../types";
+import { Module, Lesson, LearningPath, Grade } from "../types";
 
 interface SkillLessonModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface SkillLessonModalProps {
   modules: Module[];
   lessons: Lesson[];
   learningPaths: LearningPath[];
+  grades: Grade[];
 }
 
 export default function SkillLessonModal({ 
@@ -25,8 +27,10 @@ export default function SkillLessonModal({
   onSave, 
   modules, 
   lessons, 
-  learningPaths 
+  learningPaths,
+  grades
 }: SkillLessonModalProps) {
+  const [selectedGradeId, setSelectedGradeId] = useState("");
   const [selectedModuleId, setSelectedModuleId] = useState("");
   const [selectedLessonId, setSelectedLessonId] = useState("");
   const [selectedPathId, setSelectedPathId] = useState("");
@@ -34,6 +38,7 @@ export default function SkillLessonModal({
 
   useEffect(() => {
     if (isOpen) {
+      setSelectedGradeId("");
       setSelectedModuleId("");
       setSelectedLessonId("");
       setSelectedPathId("");
@@ -52,12 +57,25 @@ export default function SkillLessonModal({
     }
   };
 
-  const filteredLessons = lessons.filter(l => l.moduleId === selectedModuleId);
+  // Filter modules based on selected grade
+  const filteredModules = modules.filter(m => 
+    !selectedGradeId || (m.gradeIds && m.gradeIds.includes(selectedGradeId))
+  );
+
+  // Filter lessons based on selected module AND grade
+  const filteredLessons = lessons.filter(l => 
+    l.moduleId === selectedModuleId && (!selectedGradeId || l.gradeId === selectedGradeId)
+  );
+
+  // Filter paths based on selected grade
+  const filteredPaths = learningPaths.filter(p => 
+    !selectedGradeId || (p.gradeIds && p.gradeIds.includes(selectedGradeId))
+  );
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -70,7 +88,7 @@ export default function SkillLessonModal({
             initial={{ opacity: 0, scale: 0.9, y: 40 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 40 }}
-            className="relative w-full max-w-lg bg-white rounded-[40px] shadow-2xl overflow-hidden border border-white/20"
+            className="relative w-full max-w-lg bg-white rounded-[40px] shadow-2xl overflow-hidden border border-white/20 my-auto"
           >
             {/* Header */}
             <div className="px-10 py-8 flex items-center justify-between border-b border-aquire-border">
@@ -89,9 +107,31 @@ export default function SkillLessonModal({
             </div>
 
             {/* Content */}
-            <div className="p-10 space-y-6">
-              {/* Module Selection */}
+            <div className="p-10 space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              {/* Grade Selection */}
               <div className="space-y-2">
+                <label className="block text-sm font-bold text-aquire-grey-dark ml-1 flex items-center gap-2">
+                  <GraduationCap size={14} /> Select Grade
+                </label>
+                <select 
+                  value={selectedGradeId}
+                  onChange={(e) => {
+                    setSelectedGradeId(e.target.value);
+                    setSelectedModuleId("");
+                    setSelectedLessonId("");
+                    setSelectedPathId("");
+                  }}
+                  className="w-full px-4 py-4 rounded-2xl border-2 border-aquire-border focus:border-aquire-primary outline-none transition-all bg-white font-medium text-aquire-black"
+                >
+                  <option value="">Choose a grade...</option>
+                  {grades.filter(g => g.status === 'active').map(grade => (
+                    <option key={grade.id} value={grade.id}>{grade.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Module Selection */}
+              <div className={`space-y-2 transition-all ${!selectedGradeId ? "opacity-50 pointer-events-none" : ""}`}>
                 <label className="block text-sm font-bold text-aquire-grey-dark ml-1 flex items-center gap-2">
                   <Layers size={14} /> Select Module
                 </label>
@@ -104,7 +144,7 @@ export default function SkillLessonModal({
                   className="w-full px-4 py-4 rounded-2xl border-2 border-aquire-border focus:border-aquire-primary outline-none transition-all bg-white font-medium text-aquire-black"
                 >
                   <option value="">Choose a module...</option>
-                  {modules.map(mod => (
+                  {filteredModules.map(mod => (
                     <option key={mod.id} value={mod.id}>{mod.name}</option>
                   ))}
                 </select>
@@ -128,7 +168,7 @@ export default function SkillLessonModal({
               </div>
 
               {/* Path Selection */}
-              <div className="space-y-2">
+              <div className={`space-y-2 transition-all ${!selectedGradeId ? "opacity-50 pointer-events-none" : ""}`}>
                 <label className="block text-sm font-bold text-aquire-grey-dark ml-1 flex items-center gap-2">
                   <Trophy size={14} /> Select Learning Path
                 </label>
@@ -138,7 +178,7 @@ export default function SkillLessonModal({
                   className="w-full px-4 py-4 rounded-2xl border-2 border-aquire-border focus:border-aquire-primary outline-none transition-all bg-white font-medium text-aquire-black"
                 >
                   <option value="">Choose a path...</option>
-                  {learningPaths.map(path => (
+                  {filteredPaths.map(path => (
                     <option key={path.id} value={path.id}>{path.name}</option>
                   ))}
                 </select>

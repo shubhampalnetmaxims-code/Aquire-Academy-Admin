@@ -34,12 +34,18 @@ import {
   Copy,
   FileJson,
   Download,
-  Upload
+  Upload,
+  Building2,
+  Shield,
+  Key,
+  RefreshCw,
+  Loader2,
+  X
 } from "lucide-react";
 import ModuleModal from "./ModuleModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import LessonModal from "./LessonModal";
-import { Module, Lesson, Chapter, ContentBlock, LearningPath, QuestionBank } from "../types";
+import { Module, Lesson, Chapter, ContentBlock, LearningPath, QuestionBank, Organization, Grade } from "../types";
 import ChapterModal from "./ChapterModal";
 import ChapterEditor from "./ChapterEditor";
 import StudentPreview from "./StudentPreview";
@@ -49,6 +55,9 @@ import LearningPathZigZagPreview from "./LearningPathZigZagPreview";
 import QuestionBankModal from "./QuestionBankModal";
 import QuestionBankPreview from "./QuestionBankPreview";
 import SkillLessonModal from "./SkillLessonModal";
+import CryptoJS from "crypto-js";
+import { v4 as uuidv4 } from 'uuid';
+import { Teacher, Invitation } from "../types";
 
 interface DashboardContentProps {
   activeTab: string;
@@ -56,10 +65,35 @@ interface DashboardContentProps {
 }
 
 const INITIAL_MODULES: Module[] = [
-  { id: "m1", name: "Narrative Writing", description: "Master the art of storytelling, from character creation to plot development.", createdAt: new Date().toISOString() },
-  { id: "m2", name: "Punctuation", description: "Learn the essential rules of punctuation to make your writing clear and effective.", createdAt: new Date().toISOString() },
-  { id: "m3", name: "Editing", description: "Develop the skills to review, revise, and refine your own writing and others'.", createdAt: new Date().toISOString() },
-  { id: "m4", name: "Persuasive Writing", description: "Learn how to build strong arguments and convince your audience through writing.", createdAt: new Date().toISOString() },
+  { 
+    id: "m1", 
+    name: "Advanced English Composition", 
+    description: "Master the art of structured writing, advanced grammar, and persuasive techniques for academic excellence.", 
+    gradeIds: ["g4", "g5"], 
+    createdAt: new Date().toISOString() 
+  },
+  { 
+    id: "m2", 
+    name: "Foundational Mathematics", 
+    description: "Building strong mathematical foundations through interactive problem solving and logical reasoning.", 
+    gradeIds: ["g1", "g2", "g3"], 
+    createdAt: new Date().toISOString() 
+  },
+  { 
+    id: "m3", 
+    name: "Introduction to Life Sciences", 
+    description: "Exploring the wonders of the natural world, from microscopic cells to complex ecosystems.", 
+    gradeIds: ["g3", "g4", "g5"], 
+    createdAt: new Date().toISOString() 
+  },
+];
+
+const INITIAL_GRADES: Grade[] = [
+  { id: "g1", name: "Grade 1", description: "Lower Primary", status: "active", created: new Date().toISOString() },
+  { id: "g2", name: "Grade 2", description: "Lower Primary", status: "active", created: new Date().toISOString() },
+  { id: "g3", name: "Grade 3", description: "Middle Primary", status: "active", created: new Date().toISOString() },
+  { id: "g4", name: "Grade 4", description: "Upper Primary", status: "active", created: new Date().toISOString() },
+  { id: "g5", name: "Grade 5", description: "Upper Primary", status: "active", created: new Date().toISOString() },
 ];
 
 const generateLessons = (): Lesson[] => {
@@ -67,179 +101,138 @@ const generateLessons = (): Lesson[] => {
   const moduleData = [
     { 
       id: "m1", 
-      name: "Narrative Writing",
-      lessonNames: [
-        "Introduction to Story Writing", "Characters and Setting", "Plot Development", 
-        "Beginning, Middle, End", "Creative Story Writing", "Writing Short Stories", 
-        "Adding Emotions", "Dialogue Writing", "Seed Data Test"
-      ]
+      name: "Advanced English Composition",
+      lessonNames: ["The Art of Persuasion", "Creative Narrative Writing", "Academic Essay Structure"]
     },
     { 
       id: "m2", 
-      name: "Punctuation",
-      lessonNames: [
-        "Introduction to Punctuation", "Full Stops & Commas", "Question & Exclamation Marks", 
-        "Apostrophes", "Capitalization Rules", "Quotation Marks", 
-        "Common Mistakes", "Practice Exercises"
-      ]
+      name: "Foundational Mathematics",
+      lessonNames: ["Number Sense & Operations", "Geometry & Spatial Reasoning", "Data Handling & Probability"]
     },
     { 
       id: "m3", 
-      name: "Editing",
-      lessonNames: [
-        "Introduction to Editing", "Spelling Mastery", "Grammar Essentials", 
-        "Sentence Structure", "Paragraph Flow", "Proofreading Techniques", 
-        "Style and Tone", "Final Review"
-      ]
-    },
-    { 
-      id: "m4", 
-      name: "Persuasive Writing",
-      lessonNames: [
-        "Introduction to Persuasive Writing", "Forming Opinions", "Building Arguments", 
-        "Persuasive Vocabulary", "Structuring Your Essay", "Debate and Counter-arguments", 
-        "Emotional Appeals", "Final Persuasive Piece"
-      ]
+      name: "Introduction to Life Sciences",
+      lessonNames: ["The World of Plants", "Animal Kingdoms", "Human Body Systems"]
     }
   ];
 
   const getChapterData = (type: string, modName: string, lessonName: string, chapterIdx: number) => {
+    const baseId = `b-${type}-${Math.random().toString(36).substr(2, 5)}`;
     switch (type) {
       case 'reading':
         return {
-          name: `📖 Understanding ${lessonName}`,
+          name: `📖 Reading: ${lessonName} Concepts`,
           blocks: [{
-            id: `b-reading-${Math.random()}`,
+            id: baseId,
             type: 'reading' as const,
             data: {
-              text: `<h3>Overview of ${lessonName}</h3><p>${lessonName} is a critical component of ${modName}. It involves understanding the core principles and applying them effectively in your writing.</p><p><b>Key Concepts:</b></p><ul><li>Clarity and Precision</li><li>Engagement with the Reader</li><li>Structural Integrity</li></ul>`,
-              examples: `Example 1: A well-crafted sentence in ${lessonName}.\nExample 2: How to avoid common pitfalls in ${lessonName}.\nExample 3: Advanced techniques for ${lessonName} mastery.`
+              text: `<h3>Mastering ${lessonName}</h3><p>In this chapter, we explore the fundamental aspects of ${lessonName} within the context of ${modName}. Understanding these concepts is essential for academic growth.</p><h4>Key Learning Objectives:</h4><ul><li>Identify core principles of ${lessonName}</li><li>Analyze real-world applications</li><li>Synthesize information from multiple sources</li></ul>`,
+              examples: `<strong>Example A:</strong> Applying ${lessonName} in a standard scenario.\n<strong>Example B:</strong> Advanced implementation of ${modName} techniques.`
             }
           }]
         };
       case 'video':
         return {
-          name: `🎥 ${lessonName} Visual Guide`,
+          name: `🎥 Video Tutorial: ${lessonName}`,
           blocks: [{
-            id: `b-video-${Math.random()}`,
+            id: baseId,
             type: 'video' as const,
             data: {
               url: "https://www.w3schools.com/html/mov_bbb.mp4",
-              description: `Watch this comprehensive video guide to master the concepts of ${lessonName} in ${modName}.`
-            }
-          }]
-        };
-      case 'short_answer':
-        return {
-          name: `✍️ ${lessonName} Practice`,
-          blocks: [{
-            id: `b-sa-${Math.random()}`,
-            type: 'short_answer' as const,
-            data: {
-              questions: [
-                { q: `What is the primary goal of ${lessonName}?`, a: `To improve the quality and impact of writing within the context of ${modName}.` },
-                { q: `Name one key element of ${lessonName}.`, a: `Consistency and attention to detail.` },
-                { q: `How does ${lessonName} benefit the reader?`, a: `It makes the content more accessible and engaging.` }
-              ]
+              description: `A comprehensive visual walkthrough of ${lessonName} techniques and best practices.`
             }
           }]
         };
       case 'mcq':
         return {
-          name: `✅ ${lessonName} Quiz`,
+          name: `✅ Knowledge Check: ${lessonName}`,
           blocks: [{
-            id: `b-mcq-${Math.random()}`,
+            id: baseId,
             type: 'mcq' as const,
             data: {
-              question: `Which of the following is MOST important for ${lessonName}?`,
+              question: `Which of the following best describes the primary objective of ${lessonName}?`,
               options: [
-                { text: "Speed of writing", isCorrect: false },
-                { text: "Clarity of thought", isCorrect: true },
-                { text: "Length of the document", isCorrect: false },
-                { text: "Use of complex words", isCorrect: false },
-                { text: "Following the rules of grammar", isCorrect: true }
-              ]
+                { text: "Memorizing facts without context", isCorrect: false },
+                { text: "Applying critical thinking to solve problems", isCorrect: true },
+                { text: "Following instructions blindly", isCorrect: false },
+                { text: "Avoiding all challenges", isCorrect: false }
+              ],
+              marks: 5
+            }
+          }]
+        };
+      case 'short_answer':
+        return {
+          name: `✍️ Quick Quiz: ${lessonName}`,
+          blocks: [{
+            id: baseId,
+            type: 'short_answer' as const,
+            data: {
+              questions: [
+                { q: `Define the core concept of ${lessonName}.`, a: `It is the systematic study and application of ${modName} principles.` },
+                { q: `Why is ${lessonName} important?`, a: `It provides the necessary tools for advanced learning and practical application.` }
+              ],
+              marks: 10
             }
           }]
         };
       case 'fill_blanks':
         return {
-          name: `🧩 ${lessonName} Completion`,
+          name: `🧩 Vocabulary: ${lessonName}`,
           blocks: [{
-            id: `b-fb-${Math.random()}`,
+            id: baseId,
             type: 'fill_blanks' as const,
             data: {
-              text: `${lessonName} requires a [blank] approach to ensure [blank] and [blank] in every sentence.`,
-              answers: ["systematic", "accuracy", "flow"],
+              text: `${lessonName} is a [blank] process that requires [blank] and [blank].`,
+              answers: ["dynamic", "patience", "practice"],
               options: [
-                ["random", "systematic", "haphazard"],
-                ["accuracy", "speed", "length"],
-                ["flow", "complexity", "volume"]
-              ]
+                ["static", "dynamic", "linear"],
+                ["patience", "speed", "luck"],
+                ["practice", "guessing", "waiting"]
+              ],
+              marks: 5
             }
           }]
         };
       case 'true_false':
         return {
-          name: `✔️ ${lessonName} Fact Check`,
+          name: `✔️ Fact or Fiction: ${lessonName}`,
           blocks: [{
-            id: `b-tf-${Math.random()}`,
+            id: baseId,
             type: 'true_false' as const,
             data: {
-              statement: `${lessonName} is only necessary for professional writers and doesn't apply to students.`,
-              isTrue: false
+              statement: `${lessonName} is a skill that can be improved through consistent effort and feedback.`,
+              isTrue: true,
+              marks: 5
             }
           }]
         };
       case 'drag_drop':
         return {
-          name: `🔀 ${lessonName} Organization`,
+          name: `🔀 Sequence: ${lessonName} Workflow`,
           blocks: [{
-            id: `b-dd-${Math.random()}`,
+            id: baseId,
             type: 'drag_drop' as const,
             data: {
-              paragraph: `Arrange the steps of ${lessonName} in the correct order: [blank], [blank], [blank].`,
-              items: ["Planning", "Drafting", "Reviewing"],
-              answers: ["Planning", "Drafting", "Reviewing"]
+              paragraph: `The correct order of operations in ${lessonName} is: [blank], then [blank], and finally [blank].`,
+              items: ["Analysis", "Execution", "Evaluation"],
+              answers: ["Analysis", "Execution", "Evaluation"],
+              marks: 10
             }
           }]
         };
       case 'long_text':
-        let question = `Explain the importance of ${lessonName} in your own words.`;
-        let description = "Provide a detailed explanation with examples.";
-        let expected = `The importance of ${lessonName} lies in its ability to enhance the overall quality of writing within ${modName}. By focusing on these principles, writers can create more engaging and effective content.`;
-        let keywords = `${lessonName.toLowerCase()}, ${modName.toLowerCase()}, writing, quality`;
-
-        if (modName === "Narrative Writing") {
-          if (lessonName.includes("Character")) {
-            question = "Describe your favorite character from a book or movie in detail.";
-            description = "Focus on their personality, motivations, and physical appearance. Use descriptive language.";
-            expected = "A good character description should include both internal and external traits. For example, Harry Potter is known for his bravery (internal) and his lightning-shaped scar (external).";
-            keywords = "character, personality, motivation, appearance, traits";
-          } else if (lessonName.includes("Plot")) {
-            question = "Explain the standard plot structure of a narrative story.";
-            description = "Include the introduction, rising action, climax, falling action, and resolution.";
-            expected = "The plot structure typically follows a curve starting with the exposition, followed by rising action leading to the climax, then falling action, and finally the resolution.";
-            keywords = "plot, structure, climax, resolution, exposition";
-          } else if (lessonName.includes("Story")) {
-            question = "Write a persuasive paragraph about why reading is important.";
-            description = "Use at least three strong arguments to support your point of view.";
-            expected = "Reading is essential because it expands knowledge, improves vocabulary, and reduces stress. It allows us to experience different perspectives and cultures.";
-            keywords = "persuasive, reading, knowledge, vocabulary, stress";
-          }
-        }
-
         return {
-          name: `📝 ${lessonName} Essay`,
+          name: `📝 Critical Essay: ${lessonName}`,
           blocks: [{
-            id: `b-lt-${Math.random()}`,
+            id: baseId,
             type: 'long_text' as const,
             data: {
-              question,
-              description,
-              expected_answer: expected,
-              keywords,
-              marks: 10
+              question: `Discuss the impact of ${lessonName} on modern ${modName} practices.`,
+              description: "Write a minimum of 200 words. Include at least two specific examples.",
+              expected_answer: "The student should demonstrate a deep understanding of the topic, linking theoretical concepts to practical examples and showing critical analysis.",
+              keywords: `${lessonName.toLowerCase()}, impact, examples, analysis`,
+              marks: 20
             }
           }]
         };
@@ -248,99 +241,35 @@ const generateLessons = (): Lesson[] => {
     }
   };
 
-  const chapterTypes = ['reading', 'video', 'short_answer', 'mcq', 'fill_blanks', 'true_false', 'drag_drop', 'long_text'];
+  const chapterTypes = ['reading', 'video', 'mcq', 'short_answer', 'fill_blanks', 'true_false', 'drag_drop', 'long_text'];
 
   moduleData.forEach((mod) => {
     mod.lessonNames.forEach((lessonName, lessonIdx) => {
       const lessonId = `l-${mod.id}-${lessonIdx + 1}`;
       const chapters: Chapter[] = [];
       
-      if (lessonName === "Seed Data Test") {
-        chapters.push({
-          id: `c-${lessonId}-mixed`,
-          name: "Mixed Question Types Test",
-          content: "",
-          blocks: [
-            {
-              id: `b-mcq-seed`,
-              type: 'mcq' as const,
-              data: {
-                question: "Which of the following is a key element of a story's setting?",
-                options: [
-                  { text: "Time and place", isCorrect: true },
-                  { text: "The main character's name", isCorrect: false },
-                  { text: "The number of pages", isCorrect: false },
-                  { text: "The author's biography", isCorrect: false }
-                ],
-                marks: 5
-              }
-            },
-            {
-              id: `b-lt-seed`,
-              type: 'long_text' as const,
-              data: {
-                question: "Describe a character who is brave but also very clumsy.",
-                description: "Think about how their clumsiness might affect their brave actions.",
-                expected_answer: "A brave but clumsy character might rush into danger to save someone, but trip over their own feet in the process. This adds a layer of relatability and humor to their heroism.",
-                keywords: "brave, clumsy, character, description",
-                marks: 15
-              }
-            },
-            {
-              id: `b-fb-seed`,
-              type: 'fill_blanks' as const,
-              data: {
-                text: "A [blank] is used to separate items in a list, while a [blank] is used at the end of a sentence.",
-                answers: ["comma", "full stop"],
-                options: [
-                  ["comma", "colon", "dash"],
-                  ["full stop", "question mark", "exclamation mark"]
-                ],
-                marks: 5
-              }
-            },
-            {
-              id: `b-sa-seed`,
-              type: 'short_answer' as const,
-              data: {
-                questions: [
-                  { q: "What is the 'climax' of a story?", a: "The most intense or exciting point of the story." },
-                  { q: "What follows the climax in a standard plot structure?", a: "Falling action" }
-                ],
-                marks: 10
-              }
-            },
-            {
-              id: `b-tf-seed`,
-              type: 'true_false' as const,
-              data: {
-                statement: "Using 'repetition' is a common persuasive technique to emphasize a point.",
-                isTrue: true,
-                marks: 5
-              }
-            }
-          ]
-        });
-      } else {
-        chapterTypes.forEach((type, cIdx) => {
-          const chapterId = `c-${lessonId}-${cIdx + 1}`;
-          const { name, blocks } = getChapterData(type, mod.name, lessonName, cIdx);
-          chapters.push({ id: chapterId, name, content: "", blocks });
-        });
-      }
+      const module = INITIAL_MODULES.find(m => m.id === mod.id);
+      const gradeId = module?.gradeIds[lessonIdx % module.gradeIds.length] || "g1";
 
-      const isSkillLesson = lessonIdx % 3 === 0;
+      chapterTypes.forEach((type, cIdx) => {
+        const chapterId = `c-${lessonId}-${cIdx + 1}`;
+        const { name, blocks } = getChapterData(type, mod.name, lessonName, cIdx);
+        chapters.push({ id: chapterId, name, content: "", blocks });
+      });
+
+      const isSkillLesson = lessonIdx === 2; // Make the 3rd lesson a skill lesson
       lessons.push({
         id: lessonId,
         moduleId: mod.id,
+        gradeId: gradeId,
         name: lessonName,
-        description: `Comprehensive guide to ${lessonName} for grades 3-7.`,
-        thumbnail: `https://picsum.photos/seed/${lessonId}/400/300`,
+        description: `A deep dive into ${lessonName}, designed to challenge and inspire students in ${mod.name}.`,
+        thumbnail: `https://picsum.photos/seed/${lessonId}/800/600`,
         createdAt: new Date().toISOString(),
         chapters,
         isSkillLesson: isSkillLesson,
-        starNumber: isSkillLesson ? (lessonIdx % 5) + 1 : undefined,
-        learningPathId: isSkillLesson ? (mod.id === 'm1' ? 'lp1' : (mod.id === 'm2' ? 'lp2' : 'lp3')) : undefined
+        starNumber: isSkillLesson ? 3 : undefined,
+        learningPathId: isSkillLesson ? `lp-${mod.id}` : undefined
       });
     });
   });
@@ -353,54 +282,50 @@ const INITIAL_LESSONS: Lesson[] = generateLessons();
 const INITIAL_QUESTION_BANKS: QuestionBank[] = [
   {
     id: "qb1",
-    name: "Writing Skills Assessment",
-    description: "A comprehensive test covering various aspects of narrative and persuasive writing.",
+    name: "English Proficiency Benchmark",
+    description: "A comprehensive assessment of writing skills, reading comprehension, and grammatical accuracy.",
+    gradeIds: ["g4", "g5"],
     createdAt: new Date().toISOString(),
     questions: [
+      { id: "sec1", type: "section", question: "Section A: Grammar & Vocabulary", marks: 0, required: false },
       {
         id: "q1",
         type: "mcq",
-        question: "What is the main purpose of the 'climax' in a story?",
+        question: "Identify the correct use of the semicolon in the following sentences.",
         options: [
-          { text: "To introduce the characters", isCorrect: false },
-          { text: "To provide the resolution", isCorrect: false },
-          { text: "To reach the point of highest tension", isCorrect: true },
-          { text: "To describe the setting", isCorrect: false }
+          { text: "I like apples; and oranges.", isCorrect: false },
+          { text: "The weather was beautiful; we decided to go for a walk.", isCorrect: true },
+          { text: "She said; 'Hello'.", isCorrect: false },
+          { text: "Wait; for me.", isCorrect: false }
         ],
         marks: 5,
-        required: true
+        required: true,
+        image: "https://picsum.photos/seed/grammar/800/400"
       },
       {
         id: "q2",
-        type: "true_false",
-        question: "Persuasive writing should always include a counter-argument.",
-        correctAnswer: true,
+        type: "fill_blanks",
+        question: "The [blank] of the story was [blank] and [blank].",
+        answers: ["protagonist", "brave", "determined"],
         marks: 5,
         required: true
       },
+      { id: "sec2", type: "section", question: "Section B: Critical Analysis", marks: 0, required: false },
       {
         id: "q3",
-        type: "fill_blanks",
-        question: "A [blank] is used to separate items in a list, while a [blank] is used at the end of a sentence.",
-        answers: ["comma", "full stop"],
+        type: "true_false",
+        question: "A persuasive essay should only present one side of the argument to be effective.",
+        correctAnswer: false,
         marks: 5,
         required: true
       },
       {
         id: "q4",
-        type: "short_answer",
-        question: "What is 'alliteration'?",
-        expectedAnswer: "The repetition of the same letter or sound at the beginning of adjacent or closely connected words.",
-        marks: 10,
-        required: true
-      },
-      {
-        id: "q5",
         type: "long_text",
-        question: "Write a short narrative about a time you felt brave.",
-        description: "Focus on using descriptive language and showing emotions.",
-        expectedAnswer: "The student should describe a specific situation, their internal feelings of fear, and the action they took to overcome it.",
-        keywords: "brave, fear, courage, narrative, emotions",
+        question: "Analyze the theme of 'Resilience' in a book you have recently read.",
+        description: "Provide specific textual evidence to support your claims.",
+        expectedAnswer: "The student should identify a character or situation showing resilience and explain how it contributes to the overall theme.",
+        keywords: "resilience, theme, evidence, analysis",
         marks: 20,
         required: true
       }
@@ -408,64 +333,68 @@ const INITIAL_QUESTION_BANKS: QuestionBank[] = [
   },
   {
     id: "qb2",
-    name: "Punctuation Mastery Test",
-    description: "Test your knowledge of essential punctuation rules.",
+    name: "Mathematics Logic & Reasoning",
+    description: "Testing fundamental mathematical concepts and logical deduction capabilities.",
+    gradeIds: ["g1", "g2", "g3"],
     createdAt: new Date().toISOString(),
     questions: [
-      { id: "p1", type: "section", question: "Basic Punctuation", marks: 0, required: false },
-      { id: "p2", type: "mcq", question: "Which mark is used to end a question?", options: [{text: "?", isCorrect: true}, {text: "!", isCorrect: false}], marks: 2, required: true },
-      { id: "p3", type: "section", question: "Advanced Punctuation", marks: 0, required: false },
-      { id: "p4", type: "true_false", question: "Semicolons can join two independent clauses.", correctAnswer: true, marks: 5, required: true }
+      {
+        id: "mq1",
+        type: "mcq",
+        question: "What is the result of 15 + (3 * 4)?",
+        options: [
+          { text: "72", isCorrect: false },
+          { text: "27", isCorrect: true },
+          { text: "32", isCorrect: false },
+          { text: "19", isCorrect: false }
+        ],
+        marks: 5,
+        required: true
+      },
+      {
+        id: "mq2",
+        type: "short_answer",
+        question: "If a triangle has angles of 90 and 45 degrees, what is the third angle?",
+        expectedAnswer: "45 degrees",
+        marks: 5,
+        required: true
+      }
     ]
   }
 ];
 
 const INITIAL_LEARNING_PATHS: LearningPath[] = [
   {
-    id: "lp1",
-    name: "Writing Mastery",
-    description: "Master the art of narrative and persuasive writing through a series of progressive challenges.",
+    id: "lp-m1",
+    name: "The Writer's Journey",
+    description: "A gamified path to becoming a master communicator and creative writer.",
     moduleId: "m1",
+    gradeIds: ["g4", "g5"],
     stars: 5,
-    starLessons: ["l-m1-1", "l-m1-2", "l-m1-3", "l-m1-4", "l-m1-5"],
+    starLessons: ["l-m1-1", "l-m1-2", "l-m1-3", null, null],
     starsData: [
-      { star: 1, mainLessonId: "l-m1-1", skillLessonIds: ["l-m2-1", "l-m2-2"] },
-      { star: 2, mainLessonId: "l-m1-2", skillLessonIds: ["l-m2-3", "l-m2-4"] },
-      { star: 3, mainLessonId: "l-m1-3", skillLessonIds: ["l-m2-5"] },
-      { star: 4, mainLessonId: "l-m1-4", skillLessonIds: ["l-m2-6", "l-m2-7"] },
-      { star: 5, mainLessonId: "l-m1-5", skillLessonIds: ["l-m2-8"] }
+      { star: 1, mainLessonId: "l-m1-1", skillLessonIds: [] },
+      { star: 2, mainLessonId: "l-m1-2", skillLessonIds: [] },
+      { star: 3, mainLessonId: "l-m1-3", skillLessonIds: [] },
+      { star: 4, mainLessonId: null, skillLessonIds: [] },
+      { star: 5, mainLessonId: null, skillLessonIds: [] }
     ],
     createdAt: new Date().toISOString()
   },
   {
-    id: "lp2",
-    name: "Punctuation Pro",
-    description: "Become a punctuation expert by mastering every mark from commas to semicolons.",
+    id: "lp-m2",
+    name: "Math Explorer",
+    description: "Embark on an adventure through the world of numbers and logic.",
     moduleId: "m2",
-    stars: 4,
-    starLessons: ["l-m2-1", "l-m2-2", "l-m2-3", "l-m2-4"],
+    gradeIds: ["g1", "g2", "g3"],
+    stars: 5,
+    starLessons: ["l-m2-1", "l-m2-2", "l-m2-3", null, null],
     starsData: [
-      { star: 1, mainLessonId: "l-m2-1", skillLessonIds: ["l-m3-1", "l-m3-2"] },
-      { star: 2, mainLessonId: "l-m2-2", skillLessonIds: ["l-m3-3"] },
-      { star: 3, mainLessonId: "l-m2-3", skillLessonIds: ["l-m3-4", "l-m3-5"] },
-      { star: 4, mainLessonId: "l-m2-4", skillLessonIds: ["l-m3-6"] }
-    ],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "lp3",
-    name: "Edit Expert",
-    description: "Learn the professional techniques to review and refine any piece of writing.",
-    moduleId: "m3",
-    stars: 6,
-    starLessons: ["l-m3-1", "l-m3-2", "l-m3-3", "l-m3-4", "l-m3-5", "l-m3-6"],
-    starsData: [
-      { star: 1, mainLessonId: "l-m3-1", skillLessonIds: ["l-m1-1"] },
-      { star: 2, mainLessonId: "l-m3-2", skillLessonIds: ["l-m1-2"] },
-      { star: 3, mainLessonId: "l-m3-3", skillLessonIds: ["l-m1-3"] },
-      { star: 4, mainLessonId: "l-m3-4", skillLessonIds: ["l-m1-4"] },
-      { star: 5, mainLessonId: "l-m3-5", skillLessonIds: ["l-m1-5"] },
-      { star: 6, mainLessonId: "l-m3-6", skillLessonIds: ["l-m1-6"] }
+      { star: 1, mainLessonId: "l-m2-1", skillLessonIds: [] },
+      { star: 2, mainLessonId: "l-m2-2", skillLessonIds: [] },
+      { star: 3, mainLessonId: "l-m2-3", skillLessonIds: [] },
+      { star: 4, mainLessonId: null, skillLessonIds: [] },
+      { star: 5, mainLessonId: null, skillLessonIds: [] }
     ],
     createdAt: new Date().toISOString()
   }
@@ -506,6 +435,299 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
   const [itemToDelete, setItemToDelete] = useState<{ id: string; type: "module" | "lesson" | "chapter" | "learning-path" | "assessments" } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Organization State
+  const [orgData, setOrgData] = useState<Organization>({
+    name: "Aquire Global Academy",
+    logo: "https://picsum.photos/seed/aquire-logo/400/400",
+    address: "123 Education Excellence Way, Knowledge City, 110001",
+    email: "contact@aquireglobal.com",
+    phone: "+91 98765 43210",
+    updated: new Date().toISOString()
+  });
+  const [passwordForm, setPasswordForm] = useState({
+    current: "",
+    new: "",
+    confirm: ""
+  });
+  const [isSavingOrg, setIsSavingOrg] = useState(false);
+
+  // Teacher State
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [teacherForm, setTeacherForm] = useState({ name: "", email: "" });
+
+  // Grade State
+  const [grades, setGrades] = useState<Grade[]>([]);
+  const [isGradeModalOpen, setIsGradeModalOpen] = useState(false);
+  const [editingGrade, setEditingGrade] = useState<Grade | null>(null);
+  const [gradeForm, setGradeForm] = useState({ name: "", description: "", status: "active" as const });
+  const [manageSchoolTab, setManageSchoolTab] = useState<'profile' | 'grades'>('profile');
+  const [gradeSort, setGradeSort] = useState<{ field: 'name' | 'status', direction: 'asc' | 'desc' }>({ field: 'name', direction: 'asc' });
+
+  useEffect(() => {
+    const savedOrg = localStorage.getItem("aquire_organization");
+    if (savedOrg) {
+      setOrgData(JSON.parse(savedOrg));
+    }
+
+    const savedTeachers = localStorage.getItem("aquire_teachers");
+    if (savedTeachers) {
+      setTeachers(JSON.parse(savedTeachers));
+    } else {
+      // Seed Data
+      const seedTeachers: Teacher[] = [
+        { id: "t1", name: "Dr. Elizabeth Smith", email: "elizabeth.smith@aquireglobal.com", status: 'active', joined: new Date().toISOString(), profile_pic: "https://i.pravatar.cc/150?u=elizabeth" },
+        { id: "t2", name: "Prof. Robert Johnson", email: "robert.johnson@aquireglobal.com", status: 'active', joined: new Date().toISOString(), profile_pic: "https://i.pravatar.cc/150?u=robert" },
+        { id: "t3", name: "Ms. Sophia Williams", email: "sophia.williams@aquireglobal.com", status: 'active', joined: new Date().toISOString(), profile_pic: "https://i.pravatar.cc/150?u=sophia" },
+      ];
+      setTeachers(seedTeachers);
+      localStorage.setItem("aquire_teachers", JSON.stringify(seedTeachers));
+    }
+
+    const savedInvitations = localStorage.getItem("aquire_invitations");
+    if (savedInvitations) {
+      setInvitations(JSON.parse(savedInvitations));
+    }
+
+    const savedGrades = localStorage.getItem("aquire_grades");
+    if (savedGrades) {
+      setGrades(JSON.parse(savedGrades));
+    } else {
+      setGrades(INITIAL_GRADES);
+      localStorage.setItem("aquire_grades", JSON.stringify(INITIAL_GRADES));
+    }
+  }, []);
+
+  const saveTeachers = (updated: Teacher[]) => {
+    setTeachers(updated);
+    localStorage.setItem("aquire_teachers", JSON.stringify(updated));
+  };
+
+  const saveInvitations = (updated: Invitation[]) => {
+    setInvitations(updated);
+    localStorage.setItem("aquire_invitations", JSON.stringify(updated));
+  };
+
+  const saveGrades = (updated: Grade[]) => {
+    setGrades(updated);
+    localStorage.setItem("aquire_grades", JSON.stringify(updated));
+  };
+
+  const handleSaveGrade = () => {
+    if (!gradeForm.name) {
+      showToast("Grade name is required", "error");
+      return;
+    }
+
+    // Check uniqueness
+    const isDuplicate = grades.some(g => 
+      g.name.toLowerCase() === gradeForm.name.toLowerCase() && 
+      (!editingGrade || g.id !== editingGrade.id)
+    );
+
+    if (isDuplicate) {
+      showToast("Grade name must be unique", "error");
+      return;
+    }
+
+    if (editingGrade) {
+      const updated = grades.map(g => g.id === editingGrade.id ? { ...g, ...gradeForm } : g);
+      saveGrades(updated);
+      showToast("Grade updated successfully", "success");
+    } else {
+      const newGrade: Grade = {
+        id: uuidv4(),
+        ...gradeForm,
+        created: new Date().toISOString()
+      };
+      saveGrades([newGrade, ...grades]);
+      showToast("Grade added successfully", "success");
+    }
+
+    setIsGradeModalOpen(false);
+    setEditingGrade(null);
+    setGradeForm({ name: "", description: "", status: "active" });
+  };
+
+  const deleteGrade = (id: string) => {
+    const updated = grades.filter(g => g.id !== id);
+    saveGrades(updated);
+    showToast("Grade removed successfully", "success");
+  };
+
+  const toggleGradeStatus = (id: string) => {
+    const updated = grades.map(g => g.id === id ? { ...g, status: g.status === 'active' ? 'inactive' : 'active' } : g);
+    saveGrades(updated);
+    showToast("Status updated", "success");
+  };
+
+  const handleSendInvitation = () => {
+    if (!teacherForm.name || !teacherForm.email) {
+      showToast("Please fill all fields", "error");
+      return;
+    }
+
+    // Check if email already exists
+    if (teachers.some(t => t.email === teacherForm.email)) {
+      showToast("Teacher with this email already exists", "error");
+      return;
+    }
+
+    const token = uuidv4();
+    const expires = new Date();
+    expires.setHours(expires.getHours() + 24);
+
+    const newInvitation: Invitation = {
+      token,
+      email: teacherForm.email,
+      name: teacherForm.name,
+      expires: expires.toISOString(),
+      used: false
+    };
+
+    const newTeacher: Teacher = {
+      id: uuidv4(),
+      name: teacherForm.name,
+      email: teacherForm.email,
+      status: 'pending',
+      joined: new Date().toISOString(),
+      invitation_token: token,
+      token_expires: expires.toISOString()
+    };
+
+    saveInvitations([...invitations, newInvitation]);
+    saveTeachers([...teachers, newTeacher]);
+
+    // Simulate Email
+    const inviteLink = `${window.location.origin}${window.location.pathname}?token=${token}`;
+    console.log(`
+      Subject: Aquire Academy - Teacher Invitation
+      ---
+      Hi ${teacherForm.name},
+
+      Welcome to Aquire Academy! 
+
+      Signup: ${inviteLink}
+      Expires: ${expires.toLocaleString()}
+      ---
+    `);
+
+    // Copy to clipboard for easy testing
+    navigator.clipboard.writeText(inviteLink);
+    showToast("Invitation sent! Link copied to clipboard.", "success");
+    
+    setTeacherForm({ name: "", email: "" });
+    setIsTeacherModalOpen(false);
+  };
+
+  const handleImpersonate = (teacher: Teacher) => {
+    document.dispatchEvent(new CustomEvent('impersonate-teacher', { detail: teacher }));
+  };
+
+  const toggleTeacherStatus = (teacherId: string) => {
+    const updated = teachers.map(t => {
+      if (t.id === teacherId) {
+        return { ...t, status: t.status === 'active' ? 'inactive' : 'active' };
+      }
+      return t;
+    });
+    saveTeachers(updated);
+    showToast("Teacher status updated", "success");
+  };
+
+  const deleteTeacher = (teacherId: string) => {
+    const updated = teachers.filter(t => t.id !== teacherId);
+    saveTeachers(updated);
+    showToast("Teacher deleted", "success");
+  };
+
+  useEffect(() => {
+    const savedOrg = localStorage.getItem("aquire_organization");
+    if (savedOrg) {
+      setOrgData(JSON.parse(savedOrg));
+    }
+  }, []);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        showToast("Logo size must be less than 2MB", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setOrgData(prev => ({ ...prev, logo: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const calculatePasswordStrength = (pwd: string) => {
+    if (!pwd) return 0;
+    let strength = 0;
+    if (pwd.length >= 8) strength += 25;
+    if (/[A-Z]/.test(pwd)) strength += 25;
+    if (/[0-9]/.test(pwd)) strength += 25;
+    if (/[^A-Za-z0-9]/.test(pwd)) strength += 25;
+    return strength;
+  };
+
+  const handleSaveOrganization = async () => {
+    setIsSavingOrg(true);
+    try {
+      // Handle password change if provided
+      if (passwordForm.current || passwordForm.new || passwordForm.confirm) {
+        if (!passwordForm.current || !passwordForm.new || !passwordForm.confirm) {
+          showToast("Please fill all password fields", "error");
+          setIsSavingOrg(false);
+          return;
+        }
+
+        const savedHash = localStorage.getItem("aquire_admin_password_hash") || CryptoJS.SHA256("Admin@123").toString();
+        const currentHash = CryptoJS.SHA256(passwordForm.current).toString();
+
+        if (currentHash !== savedHash) {
+          showToast("Current password is incorrect", "error");
+          setIsSavingOrg(false);
+          return;
+        }
+
+        if (passwordForm.new !== passwordForm.confirm) {
+          showToast("New passwords do not match", "error");
+          setIsSavingOrg(false);
+          return;
+        }
+
+        const strength = calculatePasswordStrength(passwordForm.new);
+        if (strength < 100) {
+          showToast("Password must be 8+ chars, with upper, number, and special char", "error");
+          setIsSavingOrg(false);
+          return;
+        }
+
+        const newHash = CryptoJS.SHA256(passwordForm.new).toString();
+        localStorage.setItem("aquire_admin_password_hash", newHash);
+      }
+
+      const updatedOrg = { ...orgData, updated: new Date().toISOString() };
+      localStorage.setItem("aquire_organization", JSON.stringify(updatedOrg));
+      setOrgData(updatedOrg);
+      
+      // Trigger update in other components
+      document.dispatchEvent(new CustomEvent('organization-updated'));
+      
+      showToast("Organization profile updated successfully", "success");
+      setPasswordForm({ current: "", new: "", confirm: "" });
+    } catch (error) {
+      showToast("Failed to update organization", "error");
+    } finally {
+      setIsSavingOrg(false);
+    }
+  };
+
   // Preview State
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewLesson, setPreviewLesson] = useState<Lesson | null>(null);
@@ -525,29 +747,11 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
     
     // Check if we need to force update to the new writing curriculum
     let needsUpdate = true;
+    const SEED_VERSION = "v2_comprehensive";
     try {
-      if (savedModules && savedLessons && savedBanks) {
-        const parsedModules = JSON.parse(savedModules);
-        const parsedLessons = JSON.parse(savedLessons);
-        const parsedBanks = JSON.parse(savedBanks);
-        if (Array.isArray(parsedModules) && parsedModules.length > 0 && parsedModules.some(m => m.name === "Narrative Writing")) {
-          // Check if any lesson has a long_text block
-          const hasLongText = parsedLessons.some((l: any) => 
-            l.chapters.some((c: any) => 
-              c.blocks.some((b: any) => b.type === 'long_text')
-            )
-          );
-          // Check for Seed Data Test lesson
-          const hasSeedData = parsedLessons.some((l: any) => l.name === "Seed Data Test");
-          // Check for Question Banks
-          const hasBanks = Array.isArray(parsedBanks) && parsedBanks.length > 0;
-          // Check for Skill Lessons
-          const hasSkillLessons = parsedLessons.some((l: any) => l.isSkillLesson === true);
-
-          if (hasLongText && hasSeedData && hasBanks && hasSkillLessons) {
-            needsUpdate = false;
-          }
-        }
+      const savedVersion = localStorage.getItem("aquire_seed_version");
+      if (savedVersion === SEED_VERSION && savedModules && savedLessons && savedBanks) {
+        needsUpdate = false;
       }
     } catch (e) {
       needsUpdate = true;
@@ -558,10 +762,33 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
       setLessons(INITIAL_LESSONS);
       setLearningPaths(INITIAL_LEARNING_PATHS);
       setQuestionBanks(INITIAL_QUESTION_BANKS);
+      setGrades(INITIAL_GRADES);
+      
+      const seedTeachers: Teacher[] = [
+        { id: "t1", name: "Dr. Elizabeth Smith", email: "elizabeth.smith@aquireglobal.com", status: 'active', joined: new Date().toISOString(), profile_pic: "https://i.pravatar.cc/150?u=elizabeth" },
+        { id: "t2", name: "Prof. Robert Johnson", email: "robert.johnson@aquireglobal.com", status: 'active', joined: new Date().toISOString(), profile_pic: "https://i.pravatar.cc/150?u=robert" },
+        { id: "t3", name: "Ms. Sophia Williams", email: "sophia.williams@aquireglobal.com", status: 'active', joined: new Date().toISOString(), profile_pic: "https://i.pravatar.cc/150?u=sophia" },
+      ];
+      setTeachers(seedTeachers);
+      
+      const defaultOrg = {
+        name: "Aquire Global Academy",
+        logo: "https://picsum.photos/seed/aquire-logo/400/400",
+        address: "123 Education Excellence Way, Knowledge City, 110001",
+        email: "contact@aquireglobal.com",
+        phone: "+91 98765 43210",
+        updated: new Date().toISOString()
+      };
+      setOrgData(defaultOrg);
+
       localStorage.setItem("aquire_modules", JSON.stringify(INITIAL_MODULES));
       localStorage.setItem("aquire_lessons", JSON.stringify(INITIAL_LESSONS));
       localStorage.setItem("aquire_learning_paths", JSON.stringify(INITIAL_LEARNING_PATHS));
       localStorage.setItem("aquire_question_banks", JSON.stringify(INITIAL_QUESTION_BANKS));
+      localStorage.setItem("aquire_grades", JSON.stringify(INITIAL_GRADES));
+      localStorage.setItem("aquire_teachers", JSON.stringify(seedTeachers));
+      localStorage.setItem("aquire_organization", JSON.stringify(defaultOrg));
+      localStorage.setItem("aquire_seed_version", SEED_VERSION);
     } else {
       setModules(JSON.parse(savedModules!));
       setLessons(JSON.parse(savedLessons!));
@@ -1028,6 +1255,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
             <thead>
               <tr className="border-b border-aquire-border text-aquire-grey-med text-[10px] uppercase tracking-[0.2em] font-bold">
                 <th className="px-6 py-4">Module Details</th>
+                <th className="px-6 py-4">Grades</th>
                 <th className="px-6 py-4">Created At</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
@@ -1051,6 +1279,18 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
                           </span>
                           <span className="text-aquire-grey-med text-xs line-clamp-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: mod.description }}>
                           </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-6">
+                        <div className="flex flex-wrap gap-1">
+                          {mod.gradeIds?.map(gid => {
+                            const g = grades.find(grade => grade.id === gid);
+                            return g ? (
+                              <span key={gid} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[8px] font-black rounded-md uppercase tracking-wider">
+                                {g.name}
+                              </span>
+                            ) : null;
+                          })}
                         </div>
                       </td>
                       <td className="px-6 py-6">
@@ -1264,10 +1504,16 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
                       referrerPolicy="no-referrer"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-aquire-black/80 via-transparent to-transparent" />
-                    <div className="absolute top-4 left-4">
+                    <div className="absolute top-4 left-4 flex flex-col gap-2">
                       <span className="px-3 py-1 rounded-full bg-aquire-primary/80 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-widest">
                         {modules.find(m => m.id === lesson.moduleId)?.name || "Module"}
                       </span>
+                      {lesson.gradeId && (
+                        <span className="px-3 py-1 rounded-full bg-emerald-500/80 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
+                          <GraduationCap size={10} />
+                          {grades.find(g => g.id === lesson.gradeId)?.name || "Grade"}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="p-6">
@@ -1314,6 +1560,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
                   <tr className="border-b border-aquire-border text-aquire-grey-med text-[10px] uppercase tracking-[0.2em] font-bold">
                     <th className="px-6 py-4">Lesson Details</th>
                     <th className="px-6 py-4">Module</th>
+                    <th className="px-6 py-4">Grade</th>
                     <th className="px-6 py-4">Chapters</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
@@ -1348,6 +1595,13 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
                           <span className="px-3 py-1 rounded-full bg-aquire-grey-light text-aquire-grey-dark text-[10px] font-bold uppercase tracking-widest border border-aquire-border">
                             {modules.find(m => m.id === lesson.moduleId)?.name || "Module"}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {lesson.gradeId && (
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[8px] font-black rounded-md uppercase tracking-wider">
+                              {grades.find(g => g.id === lesson.gradeId)?.name}
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2 text-aquire-grey-med text-xs">
@@ -1625,6 +1879,10 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
                   <span className="text-[10px] font-bold text-aquire-grey-med uppercase tracking-widest">
                     {lesson.chapters.length} Chapters
                   </span>
+                  <span className="w-1 h-1 rounded-full bg-aquire-grey-med" />
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                    {grades.find(g => g.id === lesson.gradeId)?.name || "Grade"}
+                  </span>
                 </div>
                 <h3 className="text-base font-bold text-aquire-black truncate group-hover:text-aquire-primary transition-colors">
                   {lesson.name}
@@ -1781,6 +2039,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
               <thead>
                 <tr className="border-b border-aquire-border text-aquire-grey-med text-[10px] uppercase tracking-[0.2em] font-bold">
                   <th className="px-6 py-4">Path Details</th>
+                  <th className="px-6 py-4">Grades</th>
                   <th className="px-6 py-4">Module</th>
                   <th className="px-6 py-4">Stars</th>
                   <th className="px-6 py-4">Lessons</th>
@@ -1802,6 +2061,18 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
                         <div>
                           <h4 className="text-aquire-text-heading font-bold">{path.name}</h4>
                           <p className="text-aquire-grey-med text-xs line-clamp-1" dangerouslySetInnerHTML={{ __html: path.description }}></p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {path.gradeIds?.map(gid => {
+                            const g = grades.find(grade => grade.id === gid);
+                            return g ? (
+                              <span key={gid} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[8px] font-black rounded-md uppercase tracking-wider">
+                                {g.name}
+                              </span>
+                            ) : null;
+                          })}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -1924,6 +2195,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
               <thead>
                 <tr className="border-b border-aquire-border text-aquire-grey-med text-[10px] uppercase tracking-[0.2em] font-bold">
                   <th className="px-6 py-4">Assessment Details</th>
+                  <th className="px-6 py-4">Grades</th>
                   <th className="px-6 py-4">Questions</th>
                   <th className="px-6 py-4">Total Marks</th>
                   <th className="px-6 py-4">Created At</th>
@@ -1945,6 +2217,30 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
                         <div>
                           <h4 className="text-aquire-text-heading font-bold">{bank.name}</h4>
                           <p className="text-aquire-grey-med text-xs line-clamp-1">{bank.description}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {bank.gradeIds?.map(gid => {
+                            const g = grades.find(grade => grade.id === gid);
+                            return g ? (
+                              <span key={gid} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[8px] font-black rounded-md uppercase tracking-wider">
+                                {g.name}
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {bank.gradeIds?.map(gid => {
+                            const g = grades.find(grade => grade.id === gid);
+                            return g ? (
+                              <span key={gid} className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[8px] font-black rounded-md uppercase tracking-wider">
+                                {g.name}
+                              </span>
+                            ) : null;
+                          })}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -2006,6 +2302,727 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
             </table>
           </div>
         </div>
+      </motion.div>
+    );
+  };
+
+  const renderSchoolProfile = () => {
+    const strength = calculatePasswordStrength(passwordForm.new);
+    const strengthColor = strength === 0 ? "bg-aquire-grey-light" : strength < 50 ? "bg-red-500" : strength < 100 ? "bg-amber-500" : "bg-emerald-500";
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Profile Form */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="card p-8 space-y-8">
+            <div className="flex items-center gap-3 pb-4 border-b border-aquire-border">
+              <div className="w-10 h-10 bg-aquire-primary/10 rounded-xl flex items-center justify-center">
+                <Building2 className="text-aquire-primary" size={20} />
+              </div>
+              <h3 className="text-xl font-bold text-aquire-black">Basic Information</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">School Name</label>
+                <input 
+                  type="text" 
+                  value={orgData.name}
+                  onChange={(e) => setOrgData(prev => ({ ...prev, name: e.target.value }))}
+                  className="input-field w-full"
+                  placeholder="e.g. ABC International School"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Admin Email</label>
+                <input 
+                  type="email" 
+                  value={orgData.email}
+                  onChange={(e) => setOrgData(prev => ({ ...prev, email: e.target.value }))}
+                  className="input-field w-full"
+                  placeholder="admin@school.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Contact Number</label>
+                <input 
+                  type="text" 
+                  value={orgData.phone}
+                  onChange={(e) => setOrgData(prev => ({ ...prev, phone: e.target.value }))}
+                  className="input-field w-full"
+                  placeholder="+91-XXXXXXXXXX"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">School Address</label>
+                <textarea 
+                  value={orgData.address}
+                  onChange={(e) => setOrgData(prev => ({ ...prev, address: e.target.value }))}
+                  className="input-field w-full min-h-[100px] py-3"
+                  placeholder="Full postal address..."
+                />
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-aquire-border">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                  <Shield className="text-amber-500" size={20} />
+                </div>
+                <h3 className="text-xl font-bold text-aquire-black">Security Settings</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Current Password</label>
+                  <div className="relative">
+                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-aquire-grey-med" size={16} />
+                    <input 
+                      type="password" 
+                      value={passwordForm.current}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, current: e.target.value }))}
+                      className="input-field w-full pl-12"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">New Password</label>
+                  <div className="relative">
+                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-aquire-grey-med" size={16} />
+                    <input 
+                      type="password" 
+                      value={passwordForm.new}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, new: e.target.value }))}
+                      className="input-field w-full pl-12"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  {passwordForm.new && (
+                    <div className="space-y-1.5 mt-2">
+                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+                        <span className="text-aquire-grey-med">Strength</span>
+                        <span className={strength === 100 ? "text-emerald-500" : "text-amber-500"}>
+                          {strength === 0 ? "None" : strength < 50 ? "Weak" : strength < 100 ? "Good" : "Strong"}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-aquire-grey-light rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${strength}%` }}
+                          className={`h-full ${strengthColor} transition-all duration-500`}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Confirm Password</label>
+                  <div className="relative">
+                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-aquire-grey-med" size={16} />
+                    <input 
+                      type="password" 
+                      value={passwordForm.confirm}
+                      onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm: e.target.value }))}
+                      className="input-field w-full pl-12"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Logo & Branding */}
+        <div className="space-y-6">
+          <div className="card p-8">
+            <div className="flex items-center gap-3 mb-8 pb-4 border-b border-aquire-border">
+              <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center">
+                <Sparkles className="text-purple-500" size={20} />
+              </div>
+              <h3 className="text-xl font-bold text-aquire-black">Branding</h3>
+            </div>
+
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">School Logo</label>
+                <div className="flex flex-col items-center gap-6 p-8 bg-aquire-grey-light/50 rounded-3xl border-2 border-dashed border-aquire-border">
+                  <div className="w-32 h-32 bg-white rounded-2xl shadow-xl flex items-center justify-center border border-aquire-border overflow-hidden group relative">
+                    {orgData.logo ? (
+                      <img src={orgData.logo} alt="Logo" className="w-full h-full object-contain p-4" />
+                    ) : (
+                      <Building2 className="text-aquire-grey-med w-12 h-12" />
+                    )}
+                    <div className="absolute inset-0 bg-aquire-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button className="p-2 bg-white rounded-lg text-aquire-black">
+                        <Edit size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <button className="text-aquire-primary font-bold hover:underline mb-1">Upload new logo</button>
+                    <p className="text-[10px] text-aquire-grey-med uppercase tracking-widest">PNG, JPG up to 2MB</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Logo URL (Optional)</label>
+                <input 
+                  type="text" 
+                  value={orgData.logo}
+                  onChange={(e) => setOrgData(prev => ({ ...prev, logo: e.target.value }))}
+                  className="input-field w-full"
+                  placeholder="https://example.com/logo.png"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-8 bg-aquire-black text-white relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-aquire-primary/20 blur-3xl rounded-full" />
+            <h4 className="text-lg font-bold mb-2 relative z-10">Need Help?</h4>
+            <p className="text-white/60 text-sm mb-6 relative z-10">Contact our support team if you need assistance with your school settings.</p>
+            <button className="w-full py-4 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl font-bold transition-all relative z-10">
+              Contact Support
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderGrades = () => {
+    const filteredGrades = grades.filter(g => 
+      g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      g.description.toLowerCase().includes(searchQuery.toLowerCase())
+    ).sort((a, b) => {
+      if (gradeSort.field === 'name') {
+        return gradeSort.direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+      } else {
+        return gradeSort.direction === 'asc' ? a.status.localeCompare(b.status) : b.status.localeCompare(a.status);
+      }
+    });
+
+    const paginatedGrades = filteredGrades.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    const totalGradePages = Math.ceil(filteredGrades.length / itemsPerPage);
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="flex-1 relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-5 h-5" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search grades by name or description..." 
+              className="w-full pl-12 pr-4 py-4 input-field"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setGradeSort(prev => ({ field: 'name', direction: prev.field === 'name' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+              className={`px-4 py-3 rounded-xl border font-bold text-sm flex items-center gap-2 transition-all ${gradeSort.field === 'name' ? 'bg-aquire-primary/10 border-aquire-primary text-aquire-primary' : 'bg-white border-aquire-border text-aquire-grey-med'}`}
+            >
+              Name {gradeSort.field === 'name' && (gradeSort.direction === 'asc' ? '▲' : '▼')}
+            </button>
+            <button 
+              onClick={() => setGradeSort(prev => ({ field: 'status', direction: prev.field === 'status' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+              className={`px-4 py-3 rounded-xl border font-bold text-sm flex items-center gap-2 transition-all ${gradeSort.field === 'status' ? 'bg-aquire-primary/10 border-aquire-primary text-aquire-primary' : 'bg-white border-aquire-border text-aquire-grey-med'}`}
+            >
+              Status {gradeSort.field === 'status' && (gradeSort.direction === 'asc' ? '▲' : '▼')}
+            </button>
+          </div>
+        </div>
+
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-aquire-grey-light/50 border-b border-aquire-border">
+                  <th className="px-6 py-4 text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Grade Name</th>
+                  <th className="px-6 py-4 text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Description</th>
+                  <th className="px-6 py-4 text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-xs font-black text-aquire-grey-dark uppercase tracking-widest text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-aquire-border">
+                {paginatedGrades.map((grade) => (
+                  <tr key={grade.id} className="hover:bg-aquire-grey-light/30 transition-colors group">
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-aquire-black">{grade.name}</p>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-aquire-grey-med">
+                      {grade.description || "No description"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                        grade.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
+                      }`}>
+                        {grade.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => {
+                            setEditingGrade(grade);
+                            setGradeForm({ name: grade.name, description: grade.description, status: grade.status });
+                            setIsGradeModalOpen(true);
+                          }}
+                          className="p-2 hover:bg-aquire-primary/10 text-aquire-primary rounded-lg transition-all"
+                          title="Edit"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button 
+                          onClick={() => toggleGradeStatus(grade.id)}
+                          className={`p-2 rounded-lg transition-all ${
+                            grade.status === 'active' ? 'hover:bg-red-50 text-red-500' : 'hover:bg-emerald-50 text-emerald-500'
+                          }`}
+                          title={grade.status === 'active' ? "Deactivate" : "Activate"}
+                        >
+                          <RefreshCw size={18} />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setItemToDelete({ id: grade.id, type: 'grade', name: grade.name });
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-all"
+                          title="Delete"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredGrades.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-20 text-center text-aquire-grey-med">
+                      No grades found. Add your first grade to get started!
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {totalGradePages > 1 && (
+          <div className="mt-8 pt-8 border-t border-aquire-border flex items-center justify-between">
+            <p className="text-aquire-grey-med text-xs font-bold uppercase tracking-widest">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredGrades.length)} of {filteredGrades.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <button 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+                className="p-3 bg-white border border-aquire-border rounded-xl text-aquire-grey-med hover:text-aquire-primary disabled:opacity-20 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalGradePages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-10 h-10 rounded-xl text-xs font-bold transition-all ${
+                      currentPage === page 
+                        ? "bg-aquire-primary text-white shadow-lg shadow-aquire-primary/20" 
+                        : "bg-white border border-aquire-border text-aquire-grey-med hover:text-aquire-primary hover:bg-aquire-grey-light"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button 
+                disabled={currentPage === totalGradePages}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                className="p-3 bg-white border border-aquire-border rounded-xl text-aquire-grey-med hover:text-aquire-primary disabled:opacity-20 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Grade Modal */}
+        <AnimatePresence>
+          {isGradeModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsGradeModalOpen(false)}
+                className="absolute inset-0 bg-aquire-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl relative z-10"
+              >
+                <div className="p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h3 className="text-2xl font-bold text-aquire-black">
+                        {editingGrade ? 'Edit Grade' : 'Add New Grade'}
+                      </h3>
+                      <p className="text-aquire-grey-med text-sm">
+                        {editingGrade ? 'Update grade details.' : 'Create a new academic grade.'}
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setIsGradeModalOpen(false)}
+                      className="p-2 hover:bg-aquire-grey-light rounded-xl transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Grade Name</label>
+                      <input 
+                        type="text" 
+                        value={gradeForm.name}
+                        onChange={(e) => setGradeForm(prev => ({ ...prev, name: e.target.value }))}
+                        className="input-field w-full"
+                        placeholder="e.g. Grade 5 or Class 10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Description</label>
+                      <textarea 
+                        value={gradeForm.description}
+                        onChange={(e) => setGradeForm(prev => ({ ...prev, description: e.target.value }))}
+                        className="input-field w-full min-h-[100px] py-3"
+                        placeholder="e.g. Primary level students..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-10 flex gap-3">
+                    <button 
+                      onClick={() => setIsGradeModalOpen(false)}
+                      className="flex-1 py-4 px-6 border border-aquire-border rounded-2xl font-bold text-aquire-grey-med hover:bg-aquire-grey-light transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleSaveGrade}
+                      className="flex-1 py-4 px-6 bg-aquire-primary text-white rounded-2xl font-bold shadow-lg shadow-aquire-primary/20 hover:bg-aquire-primary-hover transition-all"
+                    >
+                      {editingGrade ? 'Update Grade' : 'Add Grade'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  const renderOrganization = () => {
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-8"
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-aquire-grey-med text-xs font-bold uppercase tracking-widest mb-1">
+              <span>Organization</span>
+              <ChevronRight size={12} />
+              <span className="text-aquire-primary">Manage School</span>
+            </div>
+            <h2 className="text-3xl font-bold text-aquire-black">
+              {manageSchoolTab === 'profile' ? 'School Profile' : 'Grade Management'}
+            </h2>
+            <p className="text-aquire-grey-med">
+              {manageSchoolTab === 'profile' 
+                ? "Manage your school's branding, contact information, and security settings."
+                : "Define and manage academic grades and classes for your institution."}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {manageSchoolTab === 'profile' ? (
+              <>
+                <button 
+                  onClick={() => {
+                    const defaultOrg = {
+                      name: "Aquire Academy",
+                      logo: "",
+                      address: "Delhi, India",
+                      email: "admin@gmail.com",
+                      phone: "+91-XXXXXXXXXX",
+                      updated: new Date().toISOString()
+                    };
+                    setOrgData(defaultOrg);
+                    localStorage.setItem("aquire_organization", JSON.stringify(defaultOrg));
+                    document.dispatchEvent(new CustomEvent('organization-updated'));
+                    showToast("Reset to default branding", "success");
+                  }}
+                  className="px-6 py-3 border border-aquire-border rounded-xl text-aquire-grey-med font-bold hover:bg-aquire-grey-light transition-all flex items-center gap-2"
+                >
+                  <RefreshCw size={18} />
+                  Reset to Default
+                </button>
+                <button 
+                  onClick={handleSaveOrganization}
+                  disabled={isSavingOrg}
+                  className="btn-primary min-w-[160px]"
+                >
+                  {isSavingOrg ? <Loader2 size={20} className="animate-spin" /> : <><Plus size={20} /> Save Profile</>}
+                </button>
+              </>
+            ) : (
+              <button 
+                onClick={() => {
+                  setEditingGrade(null);
+                  setGradeForm({ name: "", description: "", status: "active" });
+                  setIsGradeModalOpen(true);
+                }}
+                className="btn-primary"
+              >
+                <Plus size={20} />
+                Add Grade
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-1 bg-white/50 backdrop-blur-sm p-1 rounded-2xl border border-aquire-border w-fit">
+          <button
+            onClick={() => setManageSchoolTab('profile')}
+            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${manageSchoolTab === 'profile' ? 'bg-white text-aquire-primary shadow-sm' : 'text-aquire-grey-med hover:text-aquire-black'}`}
+          >
+            School Profile
+          </button>
+          <button
+            onClick={() => setManageSchoolTab('grades')}
+            className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${manageSchoolTab === 'grades' ? 'bg-white text-aquire-primary shadow-sm' : 'text-aquire-grey-med hover:text-aquire-black'}`}
+          >
+            Grades
+          </button>
+        </div>
+
+        {manageSchoolTab === 'profile' ? renderSchoolProfile() : renderGrades()}
+      </motion.div>
+    );
+  };
+
+  const renderTeachers = () => {
+    const filteredTeachers = teachers.filter(t => 
+      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    return (
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="space-y-6"
+      >
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-aquire-grey-med text-xs font-bold uppercase tracking-widest mb-1">
+              <span>Organization</span>
+              <ChevronRight size={12} />
+              <span className="text-aquire-primary">Teachers</span>
+            </div>
+            <h2 className="text-3xl font-bold text-aquire-black">Teacher Management</h2>
+            <p className="text-aquire-grey-med">Invite and manage your teaching staff.</p>
+          </div>
+          <button 
+            onClick={() => setIsTeacherModalOpen(true)}
+            className="btn-primary"
+          >
+            <Plus size={20} />
+            Add Teacher
+          </button>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="flex-1 relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-aquire-grey-med w-5 h-5" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search teachers by name or email..." 
+              className="w-full pl-12 pr-4 py-4 input-field"
+            />
+          </div>
+        </div>
+
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-aquire-grey-light/50 border-b border-aquire-border">
+                  <th className="px-6 py-4 text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Teacher</th>
+                  <th className="px-6 py-4 text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Joined</th>
+                  <th className="px-6 py-4 text-xs font-black text-aquire-grey-dark uppercase tracking-widest text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-aquire-border">
+                {filteredTeachers.map((teacher) => (
+                  <tr key={teacher.id} className="hover:bg-aquire-grey-light/30 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-aquire-primary/10 flex items-center justify-center border border-aquire-primary/20 overflow-hidden">
+                          {teacher.profile_pic ? (
+                            <img src={teacher.profile_pic} alt={teacher.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-aquire-primary font-bold">{teacher.name.charAt(0)}</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-aquire-black">{teacher.name}</p>
+                          <p className="text-xs text-aquire-grey-med">{teacher.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                        teacher.status === 'active' ? 'bg-emerald-100 text-emerald-600' :
+                        teacher.status === 'inactive' ? 'bg-red-100 text-red-600' :
+                        'bg-amber-100 text-amber-600'
+                      }`}>
+                        {teacher.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-aquire-grey-med">
+                      {new Date(teacher.joined).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        {teacher.status === 'active' && (
+                          <button 
+                            onClick={() => handleImpersonate(teacher)}
+                            className="p-2 hover:bg-aquire-primary/10 text-aquire-primary rounded-lg transition-all"
+                            title="Login As"
+                          >
+                            <Eye size={18} />
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => toggleTeacherStatus(teacher.id)}
+                          className={`p-2 rounded-lg transition-all ${
+                            teacher.status === 'active' ? 'hover:bg-red-50 text-red-500' : 'hover:bg-emerald-50 text-emerald-500'
+                          }`}
+                          title={teacher.status === 'active' ? "Deactivate" : "Activate"}
+                        >
+                          <RefreshCw size={18} />
+                        </button>
+                        <button 
+                          onClick={() => deleteTeacher(teacher.id)}
+                          className="p-2 hover:bg-red-50 text-red-500 rounded-lg transition-all"
+                          title="Delete"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredTeachers.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-20 text-center text-aquire-grey-med">
+                      No teachers found. Invite your first teacher to get started!
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Add Teacher Modal */}
+        <AnimatePresence>
+          {isTeacherModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsTeacherModalOpen(false)}
+                className="absolute inset-0 bg-aquire-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl relative z-10"
+              >
+                <div className="p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h3 className="text-2xl font-bold text-aquire-black">Invite Teacher</h3>
+                      <p className="text-aquire-grey-med text-sm">Send an invitation to join Aquire Academy.</p>
+                    </div>
+                    <button 
+                      onClick={() => setIsTeacherModalOpen(false)}
+                      className="p-2 hover:bg-aquire-grey-light rounded-xl transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Full Name</label>
+                      <input 
+                        type="text" 
+                        value={teacherForm.name}
+                        onChange={(e) => setTeacherForm(prev => ({ ...prev, name: e.target.value }))}
+                        className="input-field w-full"
+                        placeholder="e.g. John Doe"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-aquire-grey-dark uppercase tracking-widest">Email Address</label>
+                      <input 
+                        type="email" 
+                        value={teacherForm.email}
+                        onChange={(e) => setTeacherForm(prev => ({ ...prev, email: e.target.value }))}
+                        className="input-field w-full"
+                        placeholder="john@school.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-10 flex gap-3">
+                    <button 
+                      onClick={() => setIsTeacherModalOpen(false)}
+                      className="flex-1 py-4 px-6 border border-aquire-border rounded-2xl font-bold text-aquire-grey-med hover:bg-aquire-grey-light transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleSendInvitation}
+                      className="flex-1 py-4 px-6 bg-aquire-primary text-white rounded-2xl font-bold shadow-lg shadow-aquire-primary/20 hover:bg-aquire-primary-hover transition-all"
+                    >
+                      Send Invitation
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </motion.div>
     );
   };
@@ -2083,7 +3100,9 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
       {activeTab === "skills" && renderSkills()}
       {activeTab === "learning-paths" && renderLearningPaths()}
       {activeTab === "assessments" && renderAssessments()}
-      {activeTab !== "dashboard" && activeTab !== "modules" && activeTab !== "lessons" && activeTab !== "skills" && activeTab !== "learning-paths" && activeTab !== "assessments" && renderPlaceholder()}
+      {activeTab === "manage-school" && renderOrganization()}
+      {activeTab === "teachers" && renderTeachers()}
+      {activeTab !== "dashboard" && activeTab !== "modules" && activeTab !== "lessons" && activeTab !== "skills" && activeTab !== "learning-paths" && activeTab !== "assessments" && activeTab !== "manage-school" && activeTab !== "teachers" && renderPlaceholder()}
 
       {/* Modals */}
       <ModuleModal 
@@ -2094,6 +3113,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
         }}
         onSave={handleSaveModule}
         editingModule={editingModule}
+        grades={grades}
       />
 
       <LessonModal
@@ -2106,6 +3126,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
         editingLesson={editingLesson}
         modules={modules}
         learningPaths={learningPaths}
+        grades={grades}
       />
 
       <ChapterModal
@@ -2128,6 +3149,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
         editingPath={editingPath}
         modules={modules}
         lessons={lessons}
+        grades={grades}
       />
 
       <QuestionBankModal
@@ -2138,6 +3160,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
         }}
         onSave={handleSaveQuestionBank}
         editingBank={editingBank}
+        availableGrades={grades}
       />
 
       {isPathPreviewOpen && previewPath && (
@@ -2179,6 +3202,7 @@ export default function DashboardContent({ activeTab, showToast }: DashboardCont
         modules={modules}
         lessons={lessons}
         learningPaths={learningPaths}
+        grades={grades}
       />
 
       <DeleteConfirmModal 

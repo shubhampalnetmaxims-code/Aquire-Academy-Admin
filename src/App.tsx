@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Mail, 
@@ -15,9 +15,27 @@ import Toast from "./components/Toast";
 import ForgotPasswordModal from "./components/ForgotPasswordModal";
 import Sidebar from "./components/Sidebar";
 import DashboardContent from "./components/DashboardContent";
+import CryptoJS from "crypto-js";
+import { Organization, Teacher, Invitation } from "./types";
+import TeacherSignup from "./components/TeacherSignup";
+import TeacherDashboard from "./components/TeacherDashboard";
+
+const DEFAULT_ORG: Organization = {
+  name: "Aquire Academy",
+  logo: "", // Empty means use default icon
+  address: "Delhi, India",
+  email: "admin@gmail.com",
+  phone: "+91-XXXXXXXXXX",
+  updated: new Date().toISOString()
+};
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'teacher'>('admin');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [impersonating, setImpersonating] = useState(false);
+  const [adminSession, setAdminSession] = useState<any>(null);
+  
   const [email, setEmail] = useState("admin@gmail.com");
   const [password, setPassword] = useState("Admin@123");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,11 +43,78 @@ export default function App() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [organization, setOrganization] = useState<Organization>(DEFAULT_ORG);
+  const [view, setView] = useState<'login' | 'signup' | 'dashboard'>('login');
+  const [signupToken, setSignupToken] = useState<string | null>(null);
+
+  const activeTabRef = useRef(activeTab);
+  const organizationRef = useRef(organization);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+    organizationRef.current = organization;
+  }, [activeTab, organization]);
+
   const [toast, setToast] = useState<{ message: string; type: "success" | "error"; visible: boolean }>({
     message: "",
     type: "success",
     visible: false,
   });
+
+  // Handle URL parameters for signup
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      setSignupToken(token);
+      setView('signup');
+    }
+  }, []);
+
+  // Load organization and handle updates
+  useEffect(() => {
+    const loadOrg = () => {
+      const savedOrg = localStorage.getItem("aquire_organization");
+      if (savedOrg) {
+        try {
+          const parsed = JSON.parse(savedOrg);
+          setOrganization(parsed);
+        } catch (e) {
+          console.error("Failed to parse organization data", e);
+        }
+      } else {
+        localStorage.setItem("aquire_organization", JSON.stringify(DEFAULT_ORG));
+      }
+    };
+
+    loadOrg();
+
+    const handleOrgUpdate = () => {
+      loadOrg();
+    };
+
+    const handleImpersonate = (e: any) => {
+      const teacher = e.detail;
+      setAdminSession({
+        activeTab: activeTabRef.current,
+        organization: organizationRef.current
+      });
+      setCurrentUser(teacher);
+      setUserRole('teacher');
+      setActiveTab('dashboard');
+      setImpersonating(true);
+      setIsLoggedIn(true);
+      setView('dashboard');
+      showToast(`Impersonating ${teacher.name}`, "success");
+    };
+
+    document.addEventListener('organization-updated', handleOrgUpdate);
+    document.addEventListener('impersonate-teacher', handleImpersonate);
+    return () => {
+      document.removeEventListener('organization-updated', handleOrgUpdate);
+      document.removeEventListener('impersonate-teacher', handleImpersonate);
+    };
+  }, []);
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type, visible: true });
@@ -43,39 +128,139 @@ export default function App() {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    if (email === "admin@gmail.com" && password === "Admin@123") {
+    // Check Admin Login
+    const savedAdminPasswordHash = localStorage.getItem("aquire_admin_password_hash");
+    let isAdminValid = false;
+
+    if (savedAdminPasswordHash) {
+      const inputHash = CryptoJS.SHA256(password).toString();
+      isAdminValid = email === organization.email && inputHash === savedAdminPasswordHash;
+    } else {
+      isAdminValid = email === "admin@gmail.com" && password === "Admin@123";
+    }
+
+    if (isAdminValid) {
+      setUserRole('admin');
+      setCurrentUser({ name: 'Super Admin', email: organization.email });
       setIsSuccess(true);
       showToast("Login successful! Redirecting to dashboard...", "success");
       
-      // Transition to dashboard after success animation
       setTimeout(() => {
         setIsLoggedIn(true);
         setIsSuccess(false);
         setIsLoading(false);
+        setView('dashboard');
       }, 1500);
-    } else {
-      showToast("Invalid credentials. Please try again.", "error");
-      setIsLoading(false);
+      return;
     }
+
+    // Check Teacher Login
+    const teachers: Teacher[] = JSON.parse(localStorage.getItem("aquire_teachers") || "[]");
+    const teacher = teachers.find(t => t.email === email);
+    
+    if (teacher && teacher.status === 'active' && teacher.password_hash) {
+      const inputHash = CryptoJS.SHA256(password).toString();
+      if (inputHash === teacher.password_hash) {
+        setUserRole('teacher');
+        setCurrentUser(teacher);
+        setIsSuccess(true);
+        showToast(`Welcome back, ${teacher.name}!`, "success");
+        
+        setTimeout(() => {
+          setIsLoggedIn(true);
+          setIsSuccess(false);
+          setIsLoading(false);
+          setView('dashboard');
+        }, 1500);
+        return;
+      }
+    }
+
+    showToast("Invalid credentials or account inactive.", "error");
+    setIsLoading(false);
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    setEmail("admin@gmail.com");
-    setPassword("Admin@123");
+    setUserRole('admin');
+    setCurrentUser(null);
+    setImpersonating(false);
+    setAdminSession(null);
+    setEmail(organization.email);
+    setPassword("");
+    setView('login');
     showToast("Logged out successfully.", "success");
   };
 
-  if (isLoggedIn) {
+  const handleBackToAdmin = () => {
+    if (adminSession) {
+      setActiveTab(adminSession.activeTab);
+      setOrganization(adminSession.organization);
+      setUserRole('admin');
+      setImpersonating(false);
+      setAdminSession(null);
+      setCurrentUser({ name: 'Super Admin', email: organization.email });
+      showToast("Returned to Admin Panel", "success");
+    }
+  };
+
+  const handleSignupComplete = (teacher: Teacher) => {
+    setUserRole('teacher');
+    setCurrentUser(teacher);
+    setIsLoggedIn(true);
+    setView('dashboard');
+    setSignupToken(null);
+    // Remove token from URL without refresh
+    window.history.replaceState({}, document.title, window.location.pathname);
+  };
+
+  if (view === 'signup' && signupToken) {
+    return (
+      <div className="min-h-screen bg-aquire-black">
+        <TeacherSignup 
+          token={signupToken} 
+          onComplete={handleSignupComplete}
+          onCancel={() => {
+            setView('login');
+            setSignupToken(null);
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }}
+          showToast={showToast}
+        />
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          isVisible={toast.visible} 
+          onClose={() => setToast(prev => ({ ...prev, visible: false }))}
+        />
+      </div>
+    );
+  }
+
+  if (isLoggedIn && view === 'dashboard') {
     return (
       <div className="min-h-screen flex bg-aquire-grey-light overflow-hidden">
         <Sidebar 
           onLogout={handleLogout} 
           activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
+          setActiveTab={setActiveTab}
+          userRole={userRole}
+          impersonating={impersonating}
+          currentUser={currentUser}
+          onBackToAdmin={handleBackToAdmin}
         />
         <main className="flex-1 h-screen overflow-y-auto custom-scrollbar z-10">
-          <DashboardContent activeTab={activeTab} showToast={showToast} />
+          {userRole === 'teacher' ? (
+            <TeacherDashboard 
+              teacher={currentUser} 
+              isImpersonating={impersonating}
+              onLogout={handleLogout}
+              showToast={showToast}
+              activeTab={activeTab}
+            />
+          ) : (
+            <DashboardContent activeTab={activeTab} showToast={showToast} />
+          )}
         </main>
         <Toast 
           message={toast.message} 
@@ -110,12 +295,16 @@ export default function App() {
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="inline-flex items-center justify-center w-20 h-20 bg-white/5 backdrop-blur-md rounded-3xl mb-6 shadow-xl border border-white/10"
+                className="inline-flex items-center justify-center w-24 h-24 bg-white/5 backdrop-blur-md rounded-3xl mb-6 shadow-xl border border-white/10 overflow-hidden"
               >
-                <GraduationCap className="w-12 h-12 text-aquire-primary" />
+                {organization.logo ? (
+                  <img src={organization.logo} alt="School Logo" className="w-full h-full object-contain p-2" />
+                ) : (
+                  <GraduationCap className="w-12 h-12 text-aquire-primary" />
+                )}
               </motion.div>
               <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-2">
-                Aquire <span className="text-aquire-primary">Academy</span>
+                {organization.name}
               </h1>
               <p className="text-white/40 font-medium tracking-widest uppercase text-xs">
                 Empowering Learners
@@ -229,7 +418,7 @@ export default function App() {
             </div>
             <h2 className="text-4xl font-bold text-white mb-4">Access Granted</h2>
             <p className="text-white/60 text-lg max-w-xs mx-auto">
-              Redirecting you to the Aquire Academy Admin Dashboard...
+              Redirecting you to the {organization.name} Admin Dashboard...
             </p>
             <div className="mt-12 flex justify-center">
               <Loader2 className="w-8 h-8 text-aquire-primary animate-spin" />
@@ -245,7 +434,7 @@ export default function App() {
           <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
           <a href="#" className="hover:text-white transition-colors">Help Center</a>
         </div>
-        <p>© 2026 Aquire Academy. All rights reserved.</p>
+        <p>© 2026 {organization.name}. All rights reserved.</p>
       </footer>
 
       <ForgotPasswordModal 

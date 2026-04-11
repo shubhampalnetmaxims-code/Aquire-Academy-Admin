@@ -1,4 +1,4 @@
-import { Module, Lesson, Chapter, ContentBlock } from "../types";
+import { Module, Lesson, Chapter, ContentBlock, Grade } from "../types";
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -130,8 +130,7 @@ const generateChaptersForLesson = (lessonName: string, grade: string): Chapter[]
   ];
 };
 
-export const generateSeedData = () => {
-  const grades = ["Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7"];
+export const generateSeedData = (availableGrades: Grade[]) => {
   const modules: Module[] = [];
   const lessons: Lesson[] = [];
 
@@ -180,14 +179,18 @@ export const generateSeedData = () => {
     ]
   };
 
-  grades.forEach(grade => {
-    const gradeModules = curriculum[grade] || [];
+  Object.keys(curriculum).forEach(gradeName => {
+    const gradeObj = availableGrades.find(g => g.name === gradeName);
+    if (!gradeObj) return;
+
+    const gradeModules = curriculum[gradeName] || [];
     gradeModules.forEach(modData => {
       const moduleId = generateId();
       modules.push({
         id: moduleId,
         name: modData.name,
         description: modData.description,
+        gradeIds: [gradeObj.id],
         createdAt: new Date().toISOString()
       });
 
@@ -196,10 +199,11 @@ export const generateSeedData = () => {
         lessons.push({
           id: lessonId,
           moduleId: moduleId,
+          gradeId: gradeObj.id,
           name: lessonName,
-          description: "Comprehensive lesson on " + lessonName + " for " + grade + ".",
+          description: "Comprehensive lesson on " + lessonName + " for " + gradeName + ".",
           thumbnail: `https://picsum.photos/seed/${lessonId}/400/300`,
-          chapters: generateChaptersForLesson(lessonName, grade),
+          chapters: generateChaptersForLesson(lessonName, gradeName),
           createdAt: new Date().toISOString()
         });
       });

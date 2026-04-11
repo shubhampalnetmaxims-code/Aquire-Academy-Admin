@@ -15,12 +15,14 @@ export interface Module {
   id: string;
   name: string;
   description: string;
+  gradeIds: string[];
   createdAt: string;
 }
 
 export interface Lesson {
   id: string;
   moduleId: string;
+  gradeId: string;
   name: string;
   description: string;
   thumbnail: string;
@@ -42,6 +44,7 @@ export interface LearningPath {
   name: string;
   description: string;
   moduleId: string;
+  gradeIds: string[];
   stars: number;
   starLessons: (string | null)[];
   starsData?: PathStarData[];
@@ -67,6 +70,44 @@ export interface QuestionBank {
   id: string;
   name: string;
   description: string;
+  gradeIds: string[];
   questions: QuestionBankItem[];
   createdAt: string;
+}
+
+export interface Organization {
+  name: string;
+  logo: string;
+  address: string;
+  email: string;
+  phone: string;
+  updated: string;
+}
+
+export interface Teacher {
+  id: string;
+  name: string;
+  email: string;
+  status: 'active' | 'inactive' | 'pending';
+  joined: string;
+  profile_pic?: string;
+  invitation_token?: string;
+  token_expires?: string;
+  password_hash?: string;
+}
+
+export interface Invitation {
+  token: string;
+  email: string;
+  name: string;
+  expires: string;
+  used: boolean;
+}
+
+export interface Grade {
+  id: string;
+  name: string;
+  description: string;
+  status: 'active' | 'inactive';
+  created: string;
 }

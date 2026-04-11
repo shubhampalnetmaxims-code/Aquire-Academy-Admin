@@ -10,11 +10,12 @@ import {
   Star, 
   GripVertical,
   CheckCircle2,
-  Eye
+  Eye,
+  Check
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import RichTextEditor from "./RichTextEditor";
-import { Module, Lesson, LearningPath } from "../types";
+import { Module, Lesson, LearningPath, Grade } from "../types";
 
 interface LearningPathModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ interface LearningPathModalProps {
   editingPath: LearningPath | null;
   modules: Module[];
   lessons: Lesson[];
+  grades: Grade[];
 }
 
 const DraggableAny = Draggable as any;
@@ -33,15 +35,17 @@ export default function LearningPathModal({
   onSave, 
   editingPath, 
   modules, 
-  lessons 
+  lessons,
+  grades
 }: LearningPathModalProps) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [stars, setStars] = useState(5);
+  const [gradeIds, setGradeIds] = useState<string[]>([]);
   const [moduleId, setModuleId] = useState("");
   const [starLessons, setStarLessons] = useState<(string | null)[]>([]);
-  const [errors, setErrors] = useState<{ name?: string; description?: string; moduleId?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; description?: string; moduleId?: string; grades?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -49,6 +53,7 @@ export default function LearningPathModal({
       setName(editingPath.name);
       setDescription(editingPath.description);
       setStars(editingPath.stars);
+      setGradeIds(editingPath.gradeIds || []);
       setModuleId(editingPath.moduleId);
       setStarLessons(editingPath.starLessons);
       setStep(1);
@@ -56,7 +61,8 @@ export default function LearningPathModal({
       setName("");
       setDescription("");
       setStars(5);
-      setModuleId(modules[0]?.id || "");
+      setGradeIds([]);
+      setModuleId("");
       setStarLessons(new Array(5).fill(null));
       setStep(1);
     }
@@ -77,9 +83,10 @@ export default function LearningPathModal({
   }, [stars]);
 
   const validateStep1 = () => {
-    const newErrors: { name?: string; description?: string } = {};
+    const newErrors: { name?: string; description?: string; grades?: string } = {};
     if (!name.trim()) newErrors.name = "Path name is required";
     if (!description.trim()) newErrors.description = "Description is required";
+    if (gradeIds.length === 0) newErrors.grades = "Select at least 1 grade";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -99,6 +106,14 @@ export default function LearningPathModal({
 
   const handleBack = () => {
     setStep(prev => prev - 1);
+  };
+
+  const toggleGrade = (id: string) => {
+    setGradeIds(prev => 
+      prev.includes(id) ? prev.filter(gid => gid !== id) : [...prev, id]
+    );
+    // Reset module if grades change
+    setModuleId("");
   };
 
   const onDragEnd = (result: DropResult) => {
@@ -147,10 +162,15 @@ export default function LearningPathModal({
       skillLessonIds: []
     }));
 
-    onSave({ name, description, moduleId, stars, starLessons, starsData });
+    onSave({ name, description, moduleId, gradeIds, stars, starLessons, starsData });
     setIsSubmitting(false);
     onClose();
   };
+
+  // Filter modules based on selected grades
+  const filteredModules = modules.filter(m => 
+    m.gradeIds && m.gradeIds.some(gid => gradeIds.includes(gid))
+  );
 
   const availableLessons = lessons.filter(l => l.moduleId === moduleId && !starLessons.includes(l.id));
 
@@ -178,6 +198,31 @@ export default function LearningPathModal({
         {errors.description && <p className="text-red-500 text-xs mt-1 ml-1">{errors.description}</p>}
       </div>
 
+      <div className="space-y-3">
+        <label className="block text-sm font-bold text-aquire-grey-dark ml-1">Select Grades</label>
+        <div className="flex flex-wrap gap-2">
+          {grades.filter(g => g.status === 'active').map(grade => {
+            const isSelected = gradeIds.includes(grade.id);
+            return (
+              <button
+                key={grade.id}
+                type="button"
+                onClick={() => toggleGrade(grade.id)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border-2 ${
+                  isSelected 
+                    ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20" 
+                    : "bg-white border-aquire-border text-aquire-grey-med hover:border-aquire-primary/30"
+                }`}
+              >
+                {isSelected && <Check size={14} />}
+                {grade.name}
+              </button>
+            );
+          })}
+        </div>
+        {errors.grades && <p className="text-red-500 text-xs mt-1 ml-1">{errors.grades}</p>}
+      </div>
+
       <div className="space-y-2">
         <label className="block text-sm font-bold text-aquire-grey-dark ml-1">Number of Stars (1-20)</label>
         <select
@@ -196,26 +241,58 @@ export default function LearningPathModal({
   const renderStep2 = () => (
     <div className="space-y-6">
       <div className="space-y-4">
-        <label className="block text-sm font-bold text-aquire-grey-dark ml-1">Select Module</label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {modules.map(mod => (
-            <button
-              key={mod.id}
+        <label className="block text-sm font-bold text-aquire-grey-dark ml-1">
+          Select Module (Filtered by Grades)
+        </label>
+        {filteredModules.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredModules.map(mod => (
+              <button
+                key={mod.id}
+                type="button"
+                onClick={() => setModuleId(mod.id)}
+                className={`p-6 rounded-2xl border-2 text-left transition-all ${
+                  moduleId === mod.id 
+                    ? "border-aquire-primary bg-aquire-primary/5 ring-4 ring-aquire-primary/10" 
+                    : "border-aquire-border bg-white hover:border-aquire-primary/30"
+                }`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className={`font-bold ${moduleId === mod.id ? "text-aquire-primary" : "text-aquire-black"}`}>
+                    {mod.name}
+                  </h4>
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    {mod.gradeIds?.slice(0, 2).map(gid => {
+                      const g = grades.find(grade => grade.id === gid);
+                      return g ? (
+                        <span key={gid} className="px-2 py-0.5 bg-aquire-grey-light text-aquire-grey-med text-[8px] font-black rounded-md uppercase">
+                          {g.name}
+                        </span>
+                      ) : null;
+                    })}
+                    {(mod.gradeIds?.length || 0) > 2 && (
+                      <span className="px-2 py-0.5 bg-aquire-grey-light text-aquire-grey-med text-[8px] font-black rounded-md uppercase">
+                        +{(mod.gradeIds?.length || 0) - 2}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-aquire-grey-med line-clamp-2" dangerouslySetInnerHTML={{ __html: mod.description }}></p>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="p-12 text-center bg-aquire-grey-light rounded-3xl border-2 border-dashed border-aquire-border">
+            <p className="text-aquire-grey-med font-bold">No modules found for the selected grades.</p>
+            <button 
               type="button"
-              onClick={() => setModuleId(mod.id)}
-              className={`p-6 rounded-2xl border-2 text-left transition-all ${
-                moduleId === mod.id 
-                  ? "border-aquire-primary bg-aquire-primary/5 ring-4 ring-aquire-primary/10" 
-                  : "border-aquire-border bg-white hover:border-aquire-primary/30"
-              }`}
+              onClick={() => setStep(1)}
+              className="mt-4 text-aquire-primary text-sm font-bold hover:underline"
             >
-              <h4 className={`font-bold mb-1 ${moduleId === mod.id ? "text-aquire-primary" : "text-aquire-black"}`}>
-                {mod.name}
-              </h4>
-              <p className="text-xs text-aquire-grey-med line-clamp-2" dangerouslySetInnerHTML={{ __html: mod.description }}></p>
+              Go back to change grades
             </button>
-          ))}
-        </div>
+          </div>
+        )}
         {errors.moduleId && <p className="text-red-500 text-xs mt-1 ml-1">{errors.moduleId}</p>}
       </div>
     </div>
@@ -334,9 +411,21 @@ export default function LearningPathModal({
       <div className="bg-aquire-grey-light rounded-3xl p-8 border border-aquire-border">
         <div className="flex items-center justify-between mb-6">
           <h4 className="text-xl font-bold text-aquire-black">{name}</h4>
-          <div className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-full text-sm font-bold">
-            <Star size={16} fill="currentColor" />
-            {stars} Stars
+          <div className="flex items-center gap-4">
+            <div className="flex flex-wrap gap-1">
+              {gradeIds.map(gid => {
+                const g = grades.find(grade => grade.id === gid);
+                return g ? (
+                  <span key={gid} className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase">
+                    {g.name}
+                  </span>
+                ) : null;
+              })}
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-full text-sm font-bold">
+              <Star size={16} fill="currentColor" />
+              {stars} Stars
+            </div>
           </div>
         </div>
         <div className="prose prose-sm max-w-none text-aquire-grey-med mb-8" dangerouslySetInnerHTML={{ __html: description }} />
@@ -379,7 +468,7 @@ export default function LearningPathModal({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-4xl bg-white rounded-[32px] p-8 md:p-10 shadow-2xl border border-aquire-border my-8"
+            className="relative w-full max-w-4xl bg-white rounded-[32px] p-8 md:p-10 shadow-2xl border border-aquire-border my-auto"
           >
             <button 
               onClick={onClose}

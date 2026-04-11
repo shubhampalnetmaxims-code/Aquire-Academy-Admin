@@ -24,13 +24,14 @@ import {
   Layout,
   Database
 } from "lucide-react";
-import { QuestionBank, QuestionBankItem } from "../types";
+import { QuestionBank, QuestionBankItem, Grade } from "../types";
 
 interface QuestionBankModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (bank: Omit<QuestionBank, "id" | "createdAt">) => void;
   editingBank: QuestionBank | null;
+  availableGrades: Grade[];
 }
 
 const QUESTION_TYPES = [
@@ -42,10 +43,11 @@ const QUESTION_TYPES = [
   { id: 'section', label: 'Section Divider', icon: <Layout size={16} /> },
 ];
 
-export default function QuestionBankModal({ isOpen, onClose, onSave, editingBank }: QuestionBankModalProps) {
+export default function QuestionBankModal({ isOpen, onClose, onSave, editingBank, availableGrades }: QuestionBankModalProps) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [selectedGradeIds, setSelectedGradeIds] = useState<string[]>([]);
   const [questions, setQuestions] = useState<QuestionBankItem[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -53,11 +55,13 @@ export default function QuestionBankModal({ isOpen, onClose, onSave, editingBank
     if (editingBank) {
       setName(editingBank.name);
       setDescription(editingBank.description);
+      setSelectedGradeIds(editingBank.gradeIds || []);
       setQuestions(editingBank.questions);
       setStep(1);
     } else {
       setName("");
       setDescription("");
+      setSelectedGradeIds([]);
       setQuestions([]);
       setStep(1);
     }
@@ -101,9 +105,22 @@ export default function QuestionBankModal({ isOpen, onClose, onSave, editingBank
     }
   };
 
+  const toggleGrade = (gradeId: string) => {
+    setSelectedGradeIds(prev => 
+      prev.includes(gradeId) 
+        ? prev.filter(id => id !== gradeId)
+        : [...prev, gradeId]
+    );
+  };
+
   const handleSave = () => {
-    if (!name.trim()) return;
-    onSave({ name, description, questions });
+    if (!name.trim() || selectedGradeIds.length === 0) return;
+    onSave({ 
+      name, 
+      description, 
+      gradeIds: selectedGradeIds,
+      questions 
+    });
     onClose();
   };
 
@@ -127,13 +144,23 @@ export default function QuestionBankModal({ isOpen, onClose, onSave, editingBank
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-aquire-black/60 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white w-full max-w-5xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col"
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-5xl bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col my-auto"
+          >
         {/* Header */}
         <div className="px-8 py-6 border-b border-aquire-border flex items-center justify-between bg-aquire-grey-light/30">
           <div>
@@ -180,6 +207,28 @@ export default function QuestionBankModal({ isOpen, onClose, onSave, editingBank
                   rows={4}
                   className="w-full px-6 py-4 bg-aquire-grey-light border border-aquire-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-aquire-primary/20 focus:border-aquire-primary transition-all resize-none"
                 />
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-xs font-bold text-aquire-grey-med uppercase tracking-widest">Assign Grades</label>
+                <div className="flex flex-wrap gap-2">
+                  {availableGrades.map((grade) => (
+                    <button
+                      key={grade.id}
+                      onClick={() => toggleGrade(grade.id)}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${
+                        selectedGradeIds.includes(grade.id)
+                          ? "bg-aquire-primary border-aquire-primary text-white shadow-md shadow-aquire-primary/20"
+                          : "bg-white border-aquire-border text-aquire-grey-med hover:border-aquire-primary/50"
+                      }`}
+                    >
+                      {grade.name}
+                    </button>
+                  ))}
+                </div>
+                {selectedGradeIds.length === 0 && (
+                  <p className="text-xs text-red-500 font-medium">Please select at least one grade.</p>
+                )}
               </div>
               
               <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100 flex gap-4">
@@ -521,8 +570,8 @@ export default function QuestionBankModal({ isOpen, onClose, onSave, editingBank
           <div className="flex items-center gap-3">
             {step === 1 ? (
               <button
-                onClick={() => name.trim() && setStep(2)}
-                disabled={!name.trim()}
+                onClick={() => name.trim() && selectedGradeIds.length > 0 && setStep(2)}
+                disabled={!name.trim() || selectedGradeIds.length === 0}
                 className="flex items-center gap-2 px-8 py-3 bg-aquire-primary text-white rounded-2xl font-bold hover:shadow-lg hover:shadow-aquire-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next Step
@@ -540,6 +589,8 @@ export default function QuestionBankModal({ isOpen, onClose, onSave, editingBank
           </div>
         </div>
       </motion.div>
-    </div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
